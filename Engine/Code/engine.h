@@ -16,73 +16,99 @@ typedef glm::ivec4 ivec4;
 
 struct Image
 {
-    void* pixels;
-    ivec2 size;
-    i32   nchannels;
-    i32   stride;
+	void* pixels;
+	ivec2 size;
+	i32   nchannels;
+	i32   stride;
 };
 
 struct Texture
 {
-    GLuint      handle;
-    std::string filepath;
+	GLuint      handle;
+	std::string filepath;
 };
 
 struct Program
 {
-    GLuint             handle;
-    std::string        filepath;
-    std::string        programName;
-    u64                lastWriteTimestamp; // What is this for?
+	GLuint             handle;
+	std::string        filepath;
+	std::string        programName;
+	u64                lastWriteTimestamp; // What is this for?
 };
 
 enum Mode
 {
-    Mode_TexturedQuad,
-    Mode_Count
+	Mode_TexturedQuad,
+	Mode_Count
+};
+
+struct VertexV3V2
+{
+	glm::vec3 pos;
+	glm::vec2 uv;
+};
+
+const VertexV3V2 vertices[] = {
+	{glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0.0, 0.0)},
+	{glm::vec3(0.5, -0.5, 0.0), glm::vec2(1.0, 0.0)},
+	{glm::vec3(0.5, 0.5, 0.0), glm::vec2(1.0, 1.0)},
+	{glm::vec3(-0.5, 0.5, 0.0), glm::vec2(0.0, 1.0)}
+};
+
+const u16 indices[] = {
+	0, 1, 2,
+	0, 2, 3
 };
 
 struct App
 {
-    // Loop
-    f32  deltaTime;
-    bool isRunning;
+	// Coso para inicializar cosos en releases (Wip)
+	App() : deltaTime(0.0f)
+	{
 
-    // Input
-    Input input;
+	}
 
-    // Graphics
-    char gpuName[64];
-    char openGlVersion[64];
+	// Loop
+	f32  deltaTime;
+	bool isRunning;
 
-    ivec2 displaySize;
+	// Input
+	Input input;
 
-    std::vector<Texture>  textures;
-    std::vector<Program>  programs;
+	// Graphics
+	char gpuName[64];
+	char openGlVersion[64];
 
-    // program indices
-    u32 texturedGeometryProgramIdx;
-    
-    // texture indices
-    u32 diceTexIdx;
-    u32 whiteTexIdx;
-    u32 blackTexIdx;
-    u32 normalTexIdx;
-    u32 magentaTexIdx;
+	ivec2 displaySize;
 
-    // Mode
-    Mode mode;
+	std::vector<Texture>  textures;
+	std::vector<Program>  programs;
 
-    // Embedded geometry (in-editor simple meshes such as
-    // a screen filling quad, a cube, a sphere...)
-    GLuint embeddedVertices;
-    GLuint embeddedElements;
+	// program indices
+	u32 texturedGeometryProgramIdx;
 
-    // Location of the texture uniform in the textured quad shader
-    GLuint programUniformTexture;
+	// texture indices
+	u32 diceTexIdx;
+	u32 whiteTexIdx;
+	u32 blackTexIdx;
+	u32 normalTexIdx;
+	u32 magentaTexIdx;
 
-    // VAO object to link our screen filling quad with our textured quad shader
-    GLuint vao;
+	// Mode
+	Mode mode;
+
+	// Embedded geometry (in-editor simple meshes such as
+	// a screen filling quad, a cube, a sphere...)
+	GLuint embeddedVertices;
+	GLuint embeddedElements;
+
+	// Location of the texture uniform in the textured quad shader
+	GLuint programUniformTexture;
+
+	// VAO object to link our screen filling quad with our textured quad shader
+	GLuint vao;
+
+	std::string openGlDebugInfo;
 };
 
 void Init(App* app);
