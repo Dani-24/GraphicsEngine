@@ -178,6 +178,7 @@ u32 LoadTexture2D(App* app, const char* filepath)
 	}
 }
 
+
 void Init(App* app)
 {
 	// TODO: Initialize your resources here!
