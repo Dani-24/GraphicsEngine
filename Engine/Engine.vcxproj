@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="Code\BufferFunc.cpp" />
     <ClCompile Include="Code\engine.cpp" />
+    <ClCompile Include="Code\ModelLoadingFunc.cpp" />
     <ClCompile Include="Code\platform.cpp" />
     <ClCompile Include="ThirdParty\glad\include\glad\glad.c" />
     <ClCompile Include="ThirdParty\imgui-docking\imgui.cpp" />
@@ -36,6 +37,7 @@
     <ClInclude Include="Code\BufferFunc.h" />
     <ClInclude Include="Code\engine.h" />
     <ClInclude Include="Code\Globals.h" />
+    <ClInclude Include="Code\ModelLoadingFunc.h" />
     <ClInclude Include="Code\platform.h" />
     <ClInclude Include="ThirdParty\glad\include\glad\glad.h" />
     <ClInclude Include="ThirdParty\glad\include\glad\khrplatform.h" />

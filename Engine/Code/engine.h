@@ -6,6 +6,7 @@
 
 #include "platform.h"
 #include "BufferFunc.h"
+#include "ModelLoadingFunc.h"
 
 typedef glm::vec2  vec2;
 typedef glm::vec3  vec3;
@@ -28,12 +29,50 @@ struct Texture
 	std::string filepath;
 };
 
+struct Model
+{
+	u32 meshIdx;
+	std::vector<u32> materialIdx;
+};
+
+struct SubMesh
+{
+	ModelLoader::VertexBufferLayout vertexBufferLayout;
+	std::vector<float> vertices;
+	std::vector<u32> indices;
+	u32 vertexOffset;
+	u32 indexOffset;
+
+	std::vector<ModelLoader::VAO> vaos;
+};
+
+struct Mesh {
+	std::vector<SubMesh>	subMeshes;
+	GLuint					vertexBufferHandle;
+	GLuint					indexBufferHandle;
+};
+
+struct Material
+{
+	std::string		name;
+	vec3			albedo;
+	vec3			emissive;
+	f32				smoothness;
+	u32				albedoTextureIdx;
+	u32				emissiveTextureIdx;
+	u32				specularTextureIdx;
+	u32				normalsTextureIdx;
+	u32				bumpTextureIdx;
+};
+
 struct Program
 {
 	GLuint             handle;
 	std::string        filepath;
 	std::string        programName;
-	u64                lastWriteTimestamp; // What is this for?
+	u64                lastWriteTimestamp;
+
+	ModelLoader::VertexShaderLayout shaderLayout;
 };
 
 enum Mode
@@ -62,7 +101,7 @@ const u16 indices[] = {
 
 struct App
 {
-	// Coso para inicializar cosos en releases (Wip)
+	// === Coso para inicializar cosos en releases (WIP) === 
 	App() : deltaTime(0.0f)
 	{
 
@@ -81,11 +120,19 @@ struct App
 
 	ivec2 displaySize;
 
+	// === Hacer funciones getMaterial y tal que comprueben si ya esta cargado o no haciendo pushback o devolviendo directamente. ===
 	std::vector<Texture>  textures;
+	std::vector<Material>  materials;
+	std::vector<Mesh>  meshes;
+	std::vector<Model>  models;
 	std::vector<Program>  programs;
 
 	// program indices
-	u32 texturedGeometryProgramIdx;
+	u32 texturedGeometryProgramIdx = 0;
+	u32 texturedMeshProgramIdx = 0;
+	u32 patrisioCFuerteModel = 0;
+
+	GLuint texturedMeshProgram_uTexture;
 
 	// texture indices
 	u32 diceTexIdx;
