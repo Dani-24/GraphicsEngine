@@ -333,6 +333,12 @@ void Render(App* app)
 	{
 	case Mode_TexturedQuad:
 	{
+		float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
+		float zNear = 0.1f;
+		float zFar = 1000.0f;
+		mat4 projection = glm::perspective(glm::radians(60.0f), aspectRatio, zNear, zFar);
+		mat4 view = glm::lookAt(vec3(5.0, 5.0, 5.0), vec3(0.f,0.f,0.f), );
+
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -359,23 +365,6 @@ void Render(App* app)
 			SubMesh& subMesh = mesh.subMeshes[i];
 			glDrawElements(GL_TRIANGLES, subMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)subMesh.indexOffset);
 		}
-
-		/*const Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
-		glUseProgram(programTexturedGeometry.handle);
-		glBindVertexArray(app->vao);
-
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-		glUniform1i(app->programUniformTexture, 0);
-		glActiveTexture(GL_TEXTURE0);
-		const GLuint textureHandle = app->textures[app->diceTexIdx].handle;
-		glBindTexture(GL_TEXTURE_2D, textureHandle);
-
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-
-		glBindVertexArray(0);
-		glUseProgram(0);*/
 	}
 	break;
 
