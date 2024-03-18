@@ -327,6 +327,19 @@ void Update(App* app)
 	// You can handle app->input keyboard/mouse here
 }
 
+mat4 TransformScale(const vec3& scaleFactors)
+{
+	return glm::scale(scaleFactors);
+}
+
+mat4 TransformPositionScale(const vec3& position, const vec3& scaleFactors)
+{
+	mat4 returnValue = glm::translate(position);
+	returnValue = glm::scale(returnValue, scaleFactors);
+
+	return returnValue;
+}
+
 void Render(App* app)
 {
 	switch (app->mode)
@@ -337,7 +350,20 @@ void Render(App* app)
 		float zNear = 0.1f;
 		float zFar = 1000.0f;
 		mat4 projection = glm::perspective(glm::radians(60.0f), aspectRatio, zNear, zFar);
-		mat4 view = glm::lookAt(vec3(5.0, 5.0, 5.0), vec3(0.f,0.f,0.f), );
+
+		vec3 target = vec3(0.f, 0.f, 0.f);
+		vec3 camPos = vec3(5.0, 5.0, 5.0);
+
+		vec3 zCam = glm::normalize(camPos - target);
+		vec3 xCam = glm::cross(zCam, vec3(0, 1, 0));
+		vec3 yCam = glm::cross(xCam, zCam);
+
+		mat4 view = glm::lookAt(camPos, target, yCam);
+
+		mat4 za_warudo = TransformPositionScale(vec3(0.f, 2.0f, 0.0), vec3(0.45f));
+		mat4 worldViewProjection_tambienConocidoComo_WVP_o_MVP = projection * view * za_warudo;
+
+		glEnable(GL_DEPTH_TEST);
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -349,6 +375,8 @@ void Render(App* app)
 
 		Model& model = app->models[app->patrisioCFuerteModel];
 		Mesh& mesh = app->meshes[model.meshIdx];
+
+		glUniformMatrix4fv(glGetUniformLocation(texturedMeshProgram.handle, "WVP"), 1, GL_FALSE, &worldViewProjection_tambienConocidoComo_WVP_o_MVP[0][0]);
 
 		for (u32 i = 0; i < mesh.subMeshes.size(); ++i)
 		{
