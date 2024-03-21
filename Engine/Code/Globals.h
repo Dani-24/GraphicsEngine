@@ -1,5 +1,4 @@
 #ifndef GLOBALS
-
 #define GLOBALS
 
 #include <glad/glad.h>
@@ -7,7 +6,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <string>
 #include <vector>;
+
+#pragma warning(disable : 4267) // conversion from X to Y, possible loss of data
 
 typedef char                   i8;
 typedef short                  i16;
@@ -57,10 +59,129 @@ struct Input {
     ButtonState keys[KEY_COUNT];
 };
 
+
+struct VertexBufferAttribute
+{
+	u8 location;
+	u8 componentCount;
+	u8 offset;
+};
+
+struct VertexBufferLayout
+{
+	std::vector<VertexBufferAttribute> attributes;
+	u8 stride;
+};
+
+struct VertexShaderAttribute
+{
+	u8 location;
+	u8 componentCount;
+};
+
+struct VertexShaderLayout
+{
+	std::vector<VertexShaderAttribute> attributes;
+};
+
+struct VAO {
+	GLuint handle;
+	GLuint programHandle;
+};
+
+
+struct SubMesh
+{
+    VertexBufferLayout vertexBufferLayout;
+    std::vector<float> vertices;
+    std::vector<u32> indices;
+    u32 vertexOffset;
+    u32 indexOffset;
+
+    std::vector<VAO> vaos;
+};
+
+struct Mesh
+{
+    std::vector<SubMesh>    submeshes;
+    GLuint                  vertexBufferHandle;
+    GLuint                  indexBufferHandle;
+};
+
+struct Image
+{
+    void* pixels;
+    ivec2 size;
+    i32   nchannels;
+    i32   stride;
+};
+
+struct Texture
+{
+    GLuint      handle;
+    std::string filepath;
+};
+
+struct Program
+{
+    GLuint             handle;
+    std::string        filepath;
+    std::string        programName;
+    u64                lastWriteTimestamp; // What is this for?
+    VertexShaderLayout shaderLayout;
+};
+
+struct Model
+{
+    u32 meshIdx;
+    std::vector<u32> materialIdx;
+};
+
+enum Mode
+{
+    Mode_TexturedQuad,
+    Mode_Count
+};
+
+struct VertexV3V2
+{
+    glm::vec3 pos;
+    glm::vec2 uv;
+};
+
 struct String
 {
     char* str;
     u32   len;
+};
+
+struct Material
+{
+    std::string     name;
+    vec3            albedo;
+    vec3            emissive;
+    f32             smoothness;
+    u32             albedoTextureIdx;
+    u32             emissiveTextureIdx;
+    u32             specularTextureIdx;
+    u32             normalsTextureIdx;
+    u32             bumpTextureIdx;
+};
+
+struct Buffer {
+    GLsizei size;
+    GLenum type;
+    GLuint handle;
+    u8* data;
+    u32 head;
+};
+
+struct Entity
+{
+    mat4 worldMatrix;
+    u32 modelIndex;
+    u32 localParamsOffset;
+    u32 localParamsSize;
 };
 
 #define ILOG(...)                 \

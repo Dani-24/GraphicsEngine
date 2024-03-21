@@ -7,44 +7,25 @@
 
 #include "Globals.h"
 
+struct App;
+
 namespace ModelLoader
 {
-	struct VertexBufferAttribute
-	{
-		u8 location;
-		u8 componentCount;
-		u8 offset;
-	};
+	Image LoadImage(const char* filename);
 
-	struct VertexBufferLayout
-	{
-		std::vector<VertexBufferAttribute> attributes;
-		u8 stride;
-	};
+	void FreeImage(Image image);
 
-	struct VertexShaderAttribute
-	{
-		u8 location;
-		u8 componentCount;
-	};
+	GLuint CreateTexture2DFromImage(Image image);
 
-	struct VertexShaderLayout
-	{
-		std::vector<VertexShaderAttribute> attributes;
-	};
+	u32 LoadTexture2D(App* app, const char* filepath);
 
-	struct VAO {
-		GLuint handle;
-		GLuint programHandle;
-	};
+	void ProcessAssimpMesh(const aiScene* scene, aiMesh* mesh, Mesh* myMesh, u32 baseMeshMaterialIndex, std::vector<u32>& submeshMaterialIndices);
 
-	void ProcessAssimpMesh();
+	void ProcessAssimpMaterial(App* app, aiMaterial* material, Material& myMaterial, String directory);
 
-	void ProcessAssimpMaterial();
+	void ProcessAssimpNode(const aiScene* scene, aiNode* node, Mesh* myMesh, u32 baseMeshMaterialIndex, std::vector<u32>& submeshMaterialIndices);
 
-	void ProcessAssimpNode();
-
-	u32 LoadModel();
+	u32 LoadModel(App* app, const char* filename);
 }
 
-#endif // !MODEL_LOADING_FUNCTIONS
+#endif

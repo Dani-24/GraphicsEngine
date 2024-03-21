@@ -9,7 +9,6 @@
 #include <imgui.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
-#include "Globals.h"
 
 #include "ModelLoadingFunc.h"
 
@@ -116,7 +115,7 @@ u32 LoadProgram(App* app, const char* filepath, const char* programName)
 		glGetActiveAttrib(program.handle, i, ARRAY_COUNT(name), &length, &size, &type, name);
 
 		u8 location = glGetAttribLocation(program.handle, name);
-		program.shaderLayout.attributes.push_back(ModelLoader::VertexShaderAttribute{location, (u8)size});
+		program.shaderLayout.attributes.push_back(VertexShaderAttribute{ location, (u8)size });
 	}
 
 	app->programs.push_back(program);
@@ -203,7 +202,7 @@ GLuint FindVAO(Mesh& mesh, u32 subMeshIdx, const Program& program)
 {
 	GLuint returnValue = 0;
 
-	SubMesh& subMesh = mesh.subMeshes[subMeshIdx];
+	SubMesh& subMesh = mesh.submeshes[subMeshIdx];
 
 	for (u32 i = 0; i < (u32)subMesh.vaos.size(); ++i)
 	{
@@ -251,7 +250,7 @@ GLuint FindVAO(Mesh& mesh, u32 subMeshIdx, const Program& program)
 
 		glBindVertexArray(0);
 
-		ModelLoader::VAO vao = { vaoHandle, program.handle };
+		VAO vao = { vaoHandle, program.handle };
 		subMesh.vaos.push_back(vao);
 
 		returnValue = vaoHandle;
@@ -291,14 +290,15 @@ void Init(App* app)
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	// Start Coso y nos lo guardamos en la mochila
-	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY");
+	/*app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY");
 	const Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
-	app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
+	app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");*/
 
 	// PATRISIO SE FUERTE
 	app->texturedMeshProgramIdx = LoadProgram(app, "base_model.glsl", "BASE_MODEL");
 	const Program& texturedMeshProgram = app->programs[app->texturedMeshProgramIdx];
 	app->programUniformTexture = glGetUniformLocation(texturedMeshProgram.handle, "uTexture");
+	u32 patrisioModelIndex = ModelLoader::LoadModel(app, "Patrick/Patrick.obj");
 
 	app->diceTexIdx = LoadTexture2D(app, "dice.png");
 	app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
@@ -306,10 +306,16 @@ void Init(App* app)
 	app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
 	app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
 
-	/*ModelLoader::VertexBufferLayout vertexBufferLayout = {};
-	vertexBufferLayout.attributes.push_back(ModelLoader::VertexBufferAttribute{0, 3, 0});
-	vertexBufferLayout.attributes.push_back(ModelLoader::VertexBufferAttribute{2, 2, 3 * sizeof(float)});
-	vertexBufferLayout.stride = 5 * sizeof(float);*/
+	glEnable(GL_DEPTH_TEST);
+
+	glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
+	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAligment);
+
+	app->localUniformBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
+
+	app->entities.push_back({ glm::identity<mat4>(), patrisioModelIndex, 0, 0 });
+	app->entities.push_back({ glm::identity<mat4>(), patrisioModelIndex, 0, 0 });
+	app->entities.push_back({ glm::identity<mat4>(), patrisioModelIndex, 0, 0 });
 
 	app->mode = Mode_TexturedQuad;
 }
@@ -346,24 +352,7 @@ void Render(App* app)
 	{
 	case Mode_TexturedQuad:
 	{
-		float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
-		float zNear = 0.1f;
-		float zFar = 1000.0f;
-		mat4 projection = glm::perspective(glm::radians(60.0f), aspectRatio, zNear, zFar);
-
-		vec3 target = vec3(0.f, 0.f, 0.f);
-		vec3 camPos = vec3(5.0, 5.0, 5.0);
-
-		vec3 zCam = glm::normalize(camPos - target);
-		vec3 xCam = glm::cross(zCam, vec3(0, 1, 0));
-		vec3 yCam = glm::cross(xCam, zCam);
-
-		mat4 view = glm::lookAt(camPos, target, yCam);
-
-		mat4 za_warudo = TransformPositionScale(vec3(0.f, 2.0f, 0.0), vec3(0.45f));
-		mat4 worldViewProjection_tambienConocidoComo_WVP_o_MVP = projection * view * za_warudo;
-
-		glEnable(GL_DEPTH_TEST);
+		app->UpdateEntityBuffer();
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -373,25 +362,30 @@ void Render(App* app)
 		const Program& texturedMeshProgram = app->programs[app->texturedMeshProgramIdx];
 		glUseProgram(texturedMeshProgram.handle);
 
-		Model& model = app->models[app->patrisioCFuerteModel];
-		Mesh& mesh = app->meshes[model.meshIdx];
+		BufferManager::BindBuffer(app->localUniformBuffer);
 
-		glUniformMatrix4fv(glGetUniformLocation(texturedMeshProgram.handle, "WVP"), 1, GL_FALSE, &worldViewProjection_tambienConocidoComo_WVP_o_MVP[0][0]);
-
-		for (u32 i = 0; i < mesh.subMeshes.size(); ++i)
+		for (auto it = app->entities.begin(); it != app->entities.end(); ++it)
 		{
-			GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
-			glBindVertexArray(vao);
+			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->localUniformBuffer.handle, it->localParamsOffset, it->localParamsSize);
 
-			u32 subMeshMaterialIdx = model.materialIdx[i];
-			Material& subMeshMaterial = app->materials[subMeshMaterialIdx];
+			Model& model = app->models[app->patrisioCFuerteModel];
+			Mesh& mesh = app->meshes[model.meshIdx];
 
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, app->textures[subMeshMaterial.albedoTextureIdx].handle);
-			glUniform1i(app->texturedMeshProgramIdx, 0);
+			for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+			{
+				GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
+				glBindVertexArray(vao);
 
-			SubMesh& subMesh = mesh.subMeshes[i];
-			glDrawElements(GL_TRIANGLES, subMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)subMesh.indexOffset);
+				u32 subMeshMaterialIdx = model.materialIdx[i];
+				Material& subMeshMaterial = app->materials[subMeshMaterialIdx];
+
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, app->textures[subMeshMaterial.albedoTextureIdx].handle);
+				glUniform1i(app->texturedMeshProgramIdx, 0);
+
+				SubMesh& subMesh = mesh.submeshes[i];
+				glDrawElements(GL_TRIANGLES, subMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)subMesh.indexOffset);
+			}
 		}
 	}
 	break;
@@ -400,3 +394,39 @@ void Render(App* app)
 	}
 }
 
+void App::UpdateEntityBuffer()
+{
+	float aspectRatio = (float)displaySize.x / (float)displaySize.y;
+	float zNear = 0.1f;
+	float zFar = 1000.0f;
+	mat4 projection = glm::perspective(glm::radians(60.0f), aspectRatio, zNear, zFar);
+
+	vec3 target = vec3(0.f, 0.f, 0.f);
+	vec3 camPos = vec3(5.0, 5.0, 5.0);
+
+	vec3 zCam = glm::normalize(camPos - target);
+	vec3 xCam = glm::cross(zCam, vec3(0, 1, 0));
+	vec3 yCam = glm::cross(xCam, zCam);
+
+	mat4 view = glm::lookAt(camPos, target, yCam);
+
+	BufferManager::MapBuffer(localUniformBuffer, GL_WRITE_ONLY);
+
+	u32 iteration = 0;
+	for (auto it = entities.begin(); it != entities.end(); ++it)
+	{
+		mat4 za_warudo = TransformPositionScale(vec3(0.f + (1 * iteration), 2.0f, 0.0), vec3(0.45f));
+		mat4 WVP = projection * view * za_warudo;
+
+		Buffer& localBuffer = localUniformBuffer;
+		BufferManager::AlignHead(localBuffer, uniformBlockAligment);
+		it->localParamsOffset = localBuffer.head;
+		PushMat4(localBuffer, za_warudo);
+		PushMat4(localBuffer, WVP);
+		it->localParamsSize = localBuffer.head - it->localParamsOffset;
+
+		++iteration;
+	}
+
+	BufferManager::UnmapBuffer(localUniformBuffer);
+}
