@@ -258,6 +258,19 @@ GLuint FindVAO(Mesh& mesh, u32 subMeshIdx, const Program& program)
 	return returnValue;
 }
 
+mat4 TransformScale(const vec3& scaleFactors)
+{
+	return glm::scale(scaleFactors);
+}
+
+mat4 TransformPositionScale(const vec3& position, const vec3& scaleFactors)
+{
+	mat4 returnValue = glm::translate(position);
+	returnValue = glm::scale(returnValue, scaleFactors);
+
+	return returnValue;
+}
+
 void Init(App* app)
 {
 	// acabar lo del power
@@ -299,6 +312,7 @@ void Init(App* app)
 	const Program& texturedMeshProgram = app->programs[app->texturedMeshProgramIdx];
 	app->programUniformTexture = glGetUniformLocation(texturedMeshProgram.handle, "uTexture");
 	u32 patrisioModelIndex = ModelLoader::LoadModel(app, "Patrick/Patrick.obj");
+	u32 groundModelIndex = ModelLoader::LoadModel(app, "./ground.obj");
 
 	app->diceTexIdx = LoadTexture2D(app, "dice.png");
 	app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
@@ -313,9 +327,13 @@ void Init(App* app)
 
 	app->localUniformBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
 
-	app->entities.push_back({ glm::identity<mat4>(), patrisioModelIndex, 0, 0 });
-	app->entities.push_back({ glm::identity<mat4>(), patrisioModelIndex, 0, 0 });
-	app->entities.push_back({ glm::identity<mat4>(), patrisioModelIndex, 0, 0 });
+	app->entities.push_back({ TransformPositionScale(vec3(1.0,1.0,1.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
+	app->entities.push_back({ TransformPositionScale(vec3(2.0,1.0,1.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
+	app->entities.push_back({ TransformPositionScale(vec3(3.0,1.0,1.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
+	app->entities.push_back({ glm::identity<mat4>(), groundModelIndex, 0, 0 });
+
+	app->lights.push_back({ LightType::LightType_Directional, vec3(1.0,1.0,1.0), vec3(1.0,-1.0,1.0), vec3(0.0,0.0,0.0) });
+	app->lights.push_back({ LightType::LightType_Point, vec3(1.0,0.0,0.0), vec3(1.0,1.0,1.0), vec3(0.0,1.0,1.0) });
 
 	app->mode = Mode_TexturedQuad;
 }
@@ -331,19 +349,6 @@ void Gui(App* app)
 void Update(App* app)
 {
 	// You can handle app->input keyboard/mouse here
-}
-
-mat4 TransformScale(const vec3& scaleFactors)
-{
-	return glm::scale(scaleFactors);
-}
-
-mat4 TransformPositionScale(const vec3& position, const vec3& scaleFactors)
-{
-	mat4 returnValue = glm::translate(position);
-	returnValue = glm::scale(returnValue, scaleFactors);
-
-	return returnValue;
 }
 
 void Render(App* app)
@@ -366,9 +371,9 @@ void Render(App* app)
 
 		for (auto it = app->entities.begin(); it != app->entities.end(); ++it)
 		{
-			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->localUniformBuffer.handle, it->localParamsOffset, it->localParamsSize);
+			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->localUniformBuffer.handle, app->globalParamsOffset, app->globalParamsOffset);//it->localParamsOffset, it->localParamsSize);
 
-			Model& model = app->models[app->patrisioCFuerteModel];
+			Model& model = app->models[it->modelIndex];
 			Mesh& mesh = app->meshes[model.meshIdx];
 
 			for (u32 i = 0; i < mesh.submeshes.size(); ++i)
@@ -412,10 +417,26 @@ void App::UpdateEntityBuffer()
 
 	BufferManager::MapBuffer(localUniformBuffer, GL_WRITE_ONLY);
 
+	// LIGHTOO
+	globalParamsOffset = localUniformBuffer.head;
+	PushVec3(localUniformBuffer, camPos);
+	PushUInt(localUniformBuffer, lights.size());
+
+	for (size_t i = 0; i < lights.size(); i++) {
+		BufferManager::AlignHead(localUniformBuffer, sizeof(vec4));
+
+		Light& light = lights[i];
+		PushUInt(localUniformBuffer, lights[i].type);
+		PushVec3(localUniformBuffer, lights[i].color);
+		PushVec3(localUniformBuffer, lights[i].direction);
+		PushVec3(localUniformBuffer, lights[i].position);
+	}
+	globalParamsSize = localUniformBuffer.head - globalParamsOffset;
+
 	u32 iteration = 0;
 	for (auto it = entities.begin(); it != entities.end(); ++it)
 	{
-		mat4 za_warudo = TransformPositionScale(vec3(0.f + (1 * iteration), 2.0f, 0.0), vec3(0.45f));
+		mat4 za_warudo = it->worldMatrix; //TransformPositionScale(vec3(0.f + (1 * iteration), 2.0f, 0.0), vec3(0.45f));
 		mat4 WVP = projection * view * za_warudo;
 
 		Buffer& localBuffer = localUniformBuffer;

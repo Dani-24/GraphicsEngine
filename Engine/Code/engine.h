@@ -79,6 +79,10 @@ struct App
 	Buffer localUniformBuffer;
 
 	std::vector<Entity> entities;
+	std::vector<Light> lights;
+
+	GLint globalParamsOffset;
+	GLint globalParamsSize;
 };
 
 void Init(App* app);
