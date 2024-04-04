@@ -1,10 +1,3 @@
-//
-// engine.cpp : Put all your graphics stuff in this file. This is kind of the graphics module.
-// In here, you should type all your OpenGL commands, and you can also type code to handle
-// input platform events (e.g to move the camera or react to certain shortcuts), writing some
-// graphics related GUI options, and so on.
-//
-
 #include "engine.h"
 #include <imgui.h>
 #include <stb_image.h>
@@ -310,15 +303,15 @@ void Init(App* app)
 	// PATRISIO SE FUERTE
 	app->texturedMeshProgramIdx = LoadProgram(app, "base_model.glsl", "BASE_MODEL");
 	const Program& texturedMeshProgram = app->programs[app->texturedMeshProgramIdx];
-	app->programUniformTexture = glGetUniformLocation(texturedMeshProgram.handle, "uTexture");
+	app->texturedMeshProgram_uTexture = glGetUniformLocation(texturedMeshProgram.handle, "uTexture");
 	u32 patrisioModelIndex = ModelLoader::LoadModel(app, "Patrick/Patrick.obj");
 	u32 groundModelIndex = ModelLoader::LoadModel(app, "./ground.obj");
 
-	app->diceTexIdx = LoadTexture2D(app, "dice.png");
+	/*app->diceTexIdx = LoadTexture2D(app, "dice.png");
 	app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
 	app->blackTexIdx = LoadTexture2D(app, "color_black.png");
 	app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
-	app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
+	app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");*/
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -386,7 +379,7 @@ void Render(App* app)
 
 				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_2D, app->textures[subMeshMaterial.albedoTextureIdx].handle);
-				glUniform1i(app->texturedMeshProgramIdx, 0);
+				glUniform1i(app->texturedMeshProgram_uTexture, 0);
 
 				SubMesh& subMesh = mesh.submeshes[i];
 				glDrawElements(GL_TRIANGLES, subMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)subMesh.indexOffset);

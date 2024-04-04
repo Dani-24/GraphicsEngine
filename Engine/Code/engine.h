@@ -1,7 +1,3 @@
-//
-// engine.h: This file contains the types and functions relative to the engine.
-//
-
 #pragma once
 
 #include "platform.h"
@@ -38,17 +34,17 @@ struct App
 	ivec2 displaySize;
 
 	// === Hacer funciones getMaterial y tal que comprueben si ya esta cargado o no haciendo pushback o devolviendo directamente. ===
-	std::vector<Texture>  textures;
-	std::vector<Material>  materials;
-	std::vector<Mesh>  meshes;
-	std::vector<Model>  models;
-	std::vector<Program>  programs;
+	std::vector<Texture>	textures;
+	std::vector<Material>	materials;
+	std::vector<Mesh>		meshes;
+	std::vector<Model>		models;
+	std::vector<Program>	programs;
 
 	// program indices
 	u32 texturedGeometryProgramIdx = 0;
 	u32 texturedMeshProgramIdx = 0;
-	u32 patrisioCFuerteModel = 0;
 
+	u32 patrisioCFuerteModel = 0;
 	GLuint texturedMeshProgram_uTexture;
 
 	// texture indices
