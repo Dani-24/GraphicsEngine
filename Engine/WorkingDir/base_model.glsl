@@ -5,8 +5,8 @@
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
-//layout(location = 3) in vec3 aTangent;
-//layout(location = 4) in vec3 aBiTangent;
+layout(location = 3) in vec3 aTangent;
+layout(location = 4) in vec3 aBiTangent;
 
 struct Light
 {
@@ -66,7 +66,25 @@ in vec3 vNormal;
 in vec3 vViewDir;
 
 uniform sampler2D uTexture;
+
 layout(location = 0) out vec4 oColor;
+
+void CalcLights(in Light light,out vec3 ambient, out vec3 diffuse, out vec3 specular)
+{
+	vec3 lightDir = normalize(light.direction);
+
+	float ambientStrenght = 0.2f;
+	ambient = ambientStrenght * light.color;
+	
+	float diff = max(dot(vNormal, lightDir), 0.0f);
+	diffuse = diff * light.color;
+
+	float specularStrength = 0.1f;
+	vec3 reflectDir = reflect(-lightDir, vNormal);
+	vec3 normalViewDir = normalize(vViewDir);
+	float spec = pow(max(dot(normalViewDir, reflectDir), 0.0f), 32);
+	specular = specularStrength * spec * light.color;
+}
 
 void main()
 {
@@ -75,23 +93,15 @@ vec4 finalColor;
 
 	for(int i = 0; i < uLightCount; ++i)
 	{
-		vec3 lightDir = normalize(uLight[i].direction);
 		vec3 lightResult = vec3(0.0f);
+
+		vec3 ambient = vec3(0.0f);
+		vec3 diffuse = vec3(0.0f);
+		vec3 specular = vec3(0.0f);
 
 		if(uLight[i].type == 0)		// Directional
 		{
-			// Juntar esto con el de point en una funcion
-			float ambientStrenght = 0.2f;
-			vec3 ambient = ambientStrenght * uLight[i].color;
-
-			float diff = max(dot(vNormal, lightDir), 0.0f);
-			vec3 diffuse = diff * uLight[i].color;
-
-			float specularStrength = 0.1f;
-			vec3 reflectDir = reflect(-lightDir, vNormal);
-			vec3 normalViewDir = normalize(vViewDir);
-			float spec = pow(max(dot(normalViewDir, reflectDir), 0.0f), 32);
-			vec3 specular = specularStrength * spec * uLight[i].color;
+			CalcLights(uLight[i], ambient, diffuse, specular);
 
 			lightResult = ambient + diffuse + specular;
 
@@ -106,17 +116,7 @@ vec4 finalColor;
 			float distance = length(uLight[i].position - vPosition);
 			float attenuation = 1.0f / (constant + linear * distance + quadratic * (distance * distance));
 
-			float ambientStrenght = 0.2f;
-			vec3 ambient = ambientStrenght * uLight[i].color;
-
-			float diff = max(dot(vNormal, lightDir), 0.0f);
-			vec3 diffuse = diff * uLight[i].color;
-
-			float specularStrength = 0.1f;
-			vec3 reflectDir = reflect(-lightDir, vNormal);
-			vec3 normalViewDir = normalize(vViewDir);
-			float spec = pow(max(dot(normalViewDir, reflectDir), 0.0f), 32);
-			vec3 specular = specularStrength * spec * uLight[i].color;
+			CalcLights(uLight[i], ambient, diffuse, specular);
 
 			lightResult = (ambient * attenuation) + (diffuse * attenuation) + (specular * attenuation);
 

@@ -139,7 +139,9 @@ struct Model
 
 enum Mode
 {
-    Mode_TexturedQuad,
+    None,
+    Mode_Forward,
+    Mode_Deferred,
     Mode_Count
 };
 
