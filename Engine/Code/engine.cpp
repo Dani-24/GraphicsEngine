@@ -301,8 +301,12 @@ void Init(App* app)
 	app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");*/
 
 	// PATRISIO SE FUERTE
-	app->texturedMeshProgramIdx = LoadProgram(app, "base_model.glsl", "BASE_MODEL");
-	const Program& texturedMeshProgram = app->programs[app->texturedMeshProgramIdx];
+	app->renderToBackBufferShader = LoadProgram(app, "RENDER_TO_BB.glsl", "BRENDER_TO_BB");
+	app->renderToFrameBufferShader = LoadProgram(app, "RENDER_TO_FB.glsl", "RENDER_TO_FB");
+	app->frameBufferToQuadShader = LoadProgram(app, "FB_TO_QUAD.glsl", "FB_TO_QUAD");
+
+
+	const Program& texturedMeshProgram = app->programs[app->renderToFrameBufferShader];
 	app->texturedMeshProgram_uTexture = glGetUniformLocation(texturedMeshProgram.handle, "uTexture");
 	u32 patrisioModelIndex = ModelLoader::LoadModel(app, "Patrick/Patrick.obj");
 	u32 groundModelIndex = ModelLoader::LoadModel(app, "./ground.obj");
@@ -328,66 +332,7 @@ void Init(App* app)
 	app->lights.push_back({ LightType::LightType_Directional, vec3(1.0,1.0,1.0), vec3(1.0,-1.0,1.0), vec3(0.0,0.0,0.0) });
 	app->lights.push_back({ LightType::LightType_Point, vec3(1.0,0.0,0.0), vec3(1.0,1.0,1.0), vec3(0.0,1.0,1.0) });
 
-	//Framebuffer class
-	glGenTextures(1, &app->colorAttachmentHandle);
-	glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
-	glTexImage2D(GL_TEXTURE_2D, 9, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	GLuint depthAttachmentHandle;
-	glGenTextures(1, &depthAttachmentHandle);
-	glBindTexture(GL_TEXTURE_2D, depthAttachmentHandle);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); glBindTexture(GL_TEXTURE_2D, 0);
-
-	GLuint framebufferHandle;
-	glGenFramebuffers(1, &framebufferHandle);
-	glBindFramebuffer(GL_FRAMEBUFFER, framebufferHandle);
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, app->colorAttachmentHandle, 0);
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthAttachmentHandle, 0);
-
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->colorAttachmentHandle, 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthAttachmentHandle, 0);
-
-	GLuint drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
-	glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
-
-	// ORDENAR LOS LOGS A CADA CASE Q TOCA
-	GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	if (framebufferStatus == GL_FRAMEBUFFER_COMPLETE)
-	{
-		switch (framebufferStatus)
-		{
-		case GL_FRAMEBUFFER_UNDEFINED:
-		case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-		case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-		case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
-		case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
-		case GL_FRAMEBUFFER_UNSUPPORTED:
-		case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-		case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
-		default:
-			ELOG("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"); break;
-			ELOG("Unknown framebuffer status error");
-			ELOG("GL_FRAMEBUFFER_UNDEFINED"); break;
-			ELOG("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"); break;
-			ELOG("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"); break; ELOG("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"); break;
-			ELOG("GL_FRAMEBUFFER_UNSUPPORTED"); break;
-			ELOG("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"); break; ELOG("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS"); break;
-		}
-	}
-
-	glDrawBuffers(1, &app->colorAttachmentHandle);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	app->ConfigureFrameBuffer(app->deferredFrameBuffer);
 
 	app->mode = Mode_Deferred;
 }
@@ -397,6 +342,28 @@ void Gui(App* app)
 	ImGui::Begin("Info");
 	ImGui::Text("FPS: %f", 1.0f / app->deltaTime);
 	ImGui::Text("%s", app->openGlDebugInfo.c_str());
+
+	const char* RenderModes[] = { "FORWARD", "DEFERRED" };
+	if (ImGui::BeginCombo("Render_ Mode", RenderModes[app->mode]))
+	{
+		for (size_t i = 0; i < ARRAY_COUNT(RenderModes); ++i) {
+			bool isSelected = (i == app->mode);
+			if (ImGui::Selectable(RenderModes[i], isSelected))
+			{
+				app->mode = static_cast<Mode>(i);
+			}
+		}
+
+		ImGui::EndCombo();
+	}
+
+	if (app->mode == Mode::Mode_Deferred) {
+		for (size_t i = 0; i < app->deferredFrameBuffer.colorAttachment.size(); ++i)
+		{
+			ImGui::Image((ImTextureID)app->deferredFrameBuffer.colorAttachment[i], ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
+		}
+	}
+
 	ImGui::End();
 }
 
@@ -414,6 +381,19 @@ void Render(App* app)
 		break;
 	case Mode_Forward:
 
+		// Lo q hacia q patrisio se imprimiera con color y luz (sin cosas chungas)
+		app->UpdateEntityBuffer();
+
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
+		const Program& texturedMeshProgram = app->programs[app->renderToFrameBufferShader];
+		glUseProgram(texturedMeshProgram.handle);
+
+		app->RenderGeometry(texturedMeshProgram);
+
 		break;
 	case Mode_Deferred:
 	{
@@ -424,40 +404,18 @@ void Render(App* app)
 
 		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 
-		const Program& texturedMeshProgram = app->programs[app->texturedMeshProgramIdx];
-		glUseProgram(texturedMeshProgram.handle);
+		glBindFramebuffer(GL_FRAMEBUFFER, app->deferredFrameBuffer.fbHandle);
 
-		glBindBuffer(GL_FRAMEBUFFER, app->frameBufferHandle); //BufferManager::BindBuffer(app->localUniformBuffer);
-
-		GLuint drawBuffers[] = { app->colorAttachmentHandle };
-		glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
+		glDrawBuffers(app->deferredFrameBuffer.colorAttachment.size(), app->deferredFrameBuffer.colorAttachment.data());
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		for (auto it = app->entities.begin(); it != app->entities.end(); ++it)
-		{
-			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->localUniformBuffer.handle, app->globalParamsOffset, app->globalParamsOffset);
+		const Program& texturedMeshProgram = app->programs[app->renderToFrameBufferShader];
+		glUseProgram(texturedMeshProgram.handle);
 
-			Model& model = app->models[it->modelIndex];
-			Mesh& mesh = app->meshes[model.meshIdx];
+		app->RenderGeometry(texturedMeshProgram);
 
-			for (u32 i = 0; i < mesh.submeshes.size(); ++i)
-			{
-				GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
-				glBindVertexArray(vao);
-
-				u32 subMeshMaterialIdx = model.materialIdx[i];
-				Material& subMeshMaterial = app->materials[subMeshMaterialIdx];
-
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, app->textures[subMeshMaterial.albedoTextureIdx].handle);
-				glUniform1i(app->texturedMeshProgram_uTexture, 0);
-
-				SubMesh& subMesh = mesh.submeshes[i];
-				glDrawElements(GL_TRIANGLES, subMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)subMesh.indexOffset);
-			}
-		}
 		glBindBuffer(GL_FRAMEBUFFER, 0);
 
 		// Mix color attachments to plane
@@ -520,4 +478,105 @@ void App::UpdateEntityBuffer()
 	}
 
 	BufferManager::UnmapBuffer(localUniformBuffer);
+}
+
+void App::ConfigureFrameBuffer(FrameBuffer& aConfigFB)
+{
+	const int NUMBER_OF_CA = 3;
+
+	for (size_t i = 0; i < NUMBER_OF_CA; ++i)
+	{
+		GLuint nColorAttachment = 0;
+		glGenTextures(1, &nColorAttachment);
+		glBindTexture(GL_TEXTURE_2D, nColorAttachment);
+		glTexImage2D(GL_TEXTURE_2D, 9, GL_RGBA8, displaySize.x, displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		aConfigFB.colorAttachment.push_back(nColorAttachment);
+	}
+
+	glGenTextures(1, &aConfigFB.depthHandle);
+	glBindTexture(GL_TEXTURE_2D, aConfigFB.depthHandle);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, displaySize.x, displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); glBindTexture(GL_TEXTURE_2D, 0);
+
+	glGenFramebuffers(1, &aConfigFB.fbHandle);
+	glBindFramebuffer(GL_FRAMEBUFFER, aConfigFB.fbHandle);
+
+	std::vector<GLuint> drawBuffers;
+	for (size_t i = 0; i < NUMBER_OF_CA; ++i)
+	{
+		GLuint position = GL_COLOR_ATTACHMENT0 + i;
+		glFramebufferTexture(GL_FRAMEBUFFER, position, aConfigFB.colorAttachment[i], 0);
+		drawBuffers.push_back(position);
+	}
+
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, aConfigFB.depthHandle, 0);
+
+	// Esto da error algo le falta o sobra
+	glDrawBuffers(drawBuffers.size(), drawBuffers.data());
+
+	// ORDENAR LOS LOGS A CADA CASE Q TOCA
+	GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (framebufferStatus == GL_FRAMEBUFFER_COMPLETE)
+	{
+		switch (framebufferStatus)
+		{
+		case GL_FRAMEBUFFER_UNDEFINED:
+		case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+		case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+		case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+		case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+		case GL_FRAMEBUFFER_UNSUPPORTED:
+		case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+		case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+		default:
+			ELOG("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"); break;
+			ELOG("Unknown framebuffer status error");
+			ELOG("GL_FRAMEBUFFER_UNDEFINED"); break;
+			ELOG("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"); break;
+			ELOG("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"); break; ELOG("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"); break;
+			ELOG("GL_FRAMEBUFFER_UNSUPPORTED"); break;
+			ELOG("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"); break; ELOG("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS"); break;
+		}
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void App::RenderGeometry(const Program& aBindedProgram)
+{
+	glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), localUniformBuffer.handle, globalParamsOffset, globalParamsOffset);
+	for (auto it = entities.begin(); it != entities.end(); ++it)
+	{
+		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), localUniformBuffer.handle, it->localParamsOffset, it->localParamsOffset);
+
+		Model& model = models[it->modelIndex];
+		Mesh& mesh = meshes[model.meshIdx];
+
+		for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+		{
+			GLuint vao = FindVAO(mesh, i, aBindedProgram);
+			glBindVertexArray(vao);
+
+			u32 subMeshMaterialIdx = model.materialIdx[i];
+			Material& subMeshMaterial = materials[subMeshMaterialIdx];
+
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, textures[subMeshMaterial.albedoTextureIdx].handle);
+			glUniform1i(texturedMeshProgram_uTexture, 0);
+
+			SubMesh& subMesh = mesh.submeshes[i];
+			glDrawElements(GL_TRIANGLES, subMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)subMesh.indexOffset);
+		}
+	}
 }

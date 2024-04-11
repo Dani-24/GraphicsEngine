@@ -1,4 +1,4 @@
-#ifdef BASE_MODEL
+#ifdef RENDER_TO_BB
 
 #if defined(VERTEX) ///////////////////////////////////////////////////
 
@@ -88,8 +88,8 @@ void CalcLights(in Light light,out vec3 ambient, out vec3 diffuse, out vec3 spec
 
 void main()
 {
-vec4 textureColor = texture(uTexture, vTexCoord);
-vec4 finalColor;
+	vec4 textureColor = texture(uTexture, vTexCoord);
+	vec4 finalColor;
 
 	for(int i = 0; i < uLightCount; ++i)
 	{
