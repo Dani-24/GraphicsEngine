@@ -271,42 +271,37 @@ void Init(App* app)
 
 	// === Init Buffers ===
 
-	// VBO
-	glGenBuffers(1, &app->embeddedVertices);
-	glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//// VBO
+	//glGenBuffers(1, &app->embeddedVertices);
+	//glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// EBO
-	glGenBuffers(1, &app->embeddedElements);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	//// EBO
+	//glGenBuffers(1, &app->embeddedElements);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	// VAO
-	glGenVertexArrays(1, &app->vao);
-	glBindVertexArray(app->vao);
-	glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)0);	// Primera layout de shaders.glsl
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)sizeof(glm::vec3));	// Segunda layout de shaders.glsl
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-	glBindVertexArray(0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	//// VAO
+	//glGenVertexArrays(1, &app->vao);
+	//glBindVertexArray(app->vao);
+	//glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)0);	// Primera layout de shaders.glsl
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)sizeof(glm::vec3));	// Segunda layout de shaders.glsl
+	//glEnableVertexAttribArray(1);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+	//glBindVertexArray(0);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	// Start Coso y nos lo guardamos en la mochila
-	/*app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY");
-	const Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
-	app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");*/
-
-	// PATRISIO SE FUERTE
-	app->renderToBackBufferShader = LoadProgram(app, "RENDER_TO_BB.glsl", "BRENDER_TO_BB");
+	// Programs
+	app->renderToBackBufferShader = LoadProgram(app, "RENDER_TO_BB.glsl", "RENDER_TO_BB");
 	app->renderToFrameBufferShader = LoadProgram(app, "RENDER_TO_FB.glsl", "RENDER_TO_FB");
 	app->frameBufferToQuadShader = LoadProgram(app, "FB_TO_QUAD.glsl", "FB_TO_QUAD");
 
-
-	const Program& texturedMeshProgram = app->programs[app->renderToFrameBufferShader];
+	// Resources
+	const Program& texturedMeshProgram = app->programs[app->renderToBackBufferShader];
 	app->texturedMeshProgram_uTexture = glGetUniformLocation(texturedMeshProgram.handle, "uTexture");
 	u32 patrisioModelIndex = ModelLoader::LoadModel(app, "Patrick/Patrick.obj");
 	u32 groundModelIndex = ModelLoader::LoadModel(app, "./ground.obj");
@@ -343,8 +338,8 @@ void Gui(App* app)
 	ImGui::Text("FPS: %f", 1.0f / app->deltaTime);
 	ImGui::Text("%s", app->openGlDebugInfo.c_str());
 
-	const char* RenderModes[] = { "FORWARD", "DEFERRED" };
-	if (ImGui::BeginCombo("Render_ Mode", RenderModes[app->mode]))
+	const char* RenderModes[] = { "NONE", "FORWARD", "DEFERRED" };
+	if (ImGui::BeginCombo("Render_Mode", RenderModes[app->mode]))
 	{
 		for (size_t i = 0; i < ARRAY_COUNT(RenderModes); ++i) {
 			bool isSelected = (i == app->mode);
@@ -374,6 +369,8 @@ void Update(App* app)
 
 void Render(App* app)
 {
+	const Program& programToUse = app->programs[app->renderToFrameBufferShader];
+
 	switch (app->mode)
 	{
 	case None:
@@ -381,22 +378,24 @@ void Render(App* app)
 		break;
 	case Mode_Forward:
 
-		// Lo q hacia q patrisio se imprimiera con color y luz (sin cosas chungas)
 		app->UpdateEntityBuffer();
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+		glBindFramebuffer(GL_FRAMEBUFFER, app->deferredFrameBuffer.fbHandle);
 
-		const Program& texturedMeshProgram = app->programs[app->renderToFrameBufferShader];
-		glUseProgram(texturedMeshProgram.handle);
+		glUseProgram(programToUse.handle);
 
-		app->RenderGeometry(texturedMeshProgram);
+		app->RenderGeometry(programToUse);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		break;
 	case Mode_Deferred:
-	{
+
 		app->UpdateEntityBuffer();
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -411,16 +410,13 @@ void Render(App* app)
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		const Program& texturedMeshProgram = app->programs[app->renderToFrameBufferShader];
-		glUseProgram(texturedMeshProgram.handle);
+		glUseProgram(programToUse.handle);
 
-		app->RenderGeometry(texturedMeshProgram);
+		app->RenderGeometry(programToUse);
 
 		glBindBuffer(GL_FRAMEBUFFER, 0);
 
-		// Mix color attachments to plane
-	}
-	break;
+		break;
 	case Mode_Count:
 
 		break;
@@ -454,17 +450,16 @@ void App::UpdateEntityBuffer()
 		BufferManager::AlignHead(localUniformBuffer, sizeof(vec4));
 
 		Light& light = lights[i];
-		PushUInt(localUniformBuffer, lights[i].type);
-		PushVec3(localUniformBuffer, lights[i].color);
-		PushVec3(localUniformBuffer, lights[i].direction);
-		PushVec3(localUniformBuffer, lights[i].position);
+		PushUInt(localUniformBuffer, light.type);
+		PushVec3(localUniformBuffer, light.color);
+		PushVec3(localUniformBuffer, light.direction);
+		PushVec3(localUniformBuffer, light.position);
 	}
 	globalParamsSize = localUniformBuffer.head - globalParamsOffset;
 
-	u32 iteration = 0;
 	for (auto it = entities.begin(); it != entities.end(); ++it)
 	{
-		mat4 za_warudo = it->worldMatrix; //TransformPositionScale(vec3(0.f + (1 * iteration), 2.0f, 0.0), vec3(0.45f));
+		mat4 za_warudo = it->worldMatrix;
 		mat4 WVP = projection * view * za_warudo;
 
 		Buffer& localBuffer = localUniformBuffer;
@@ -473,8 +468,6 @@ void App::UpdateEntityBuffer()
 		PushMat4(localBuffer, za_warudo);
 		PushMat4(localBuffer, WVP);
 		it->localParamsSize = localBuffer.head - it->localParamsOffset;
-
-		++iteration;
 	}
 
 	BufferManager::UnmapBuffer(localUniformBuffer);
@@ -489,7 +482,7 @@ void App::ConfigureFrameBuffer(FrameBuffer& aConfigFB)
 		GLuint nColorAttachment = 0;
 		glGenTextures(1, &nColorAttachment);
 		glBindTexture(GL_TEXTURE_2D, nColorAttachment);
-		glTexImage2D(GL_TEXTURE_2D, 9, GL_RGBA8, displaySize.x, displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, displaySize.x, displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
@@ -508,6 +501,7 @@ void App::ConfigureFrameBuffer(FrameBuffer& aConfigFB)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 	glGenFramebuffers(1, &aConfigFB.fbHandle);
 	glBindFramebuffer(GL_FRAMEBUFFER, aConfigFB.fbHandle);
@@ -522,31 +516,40 @@ void App::ConfigureFrameBuffer(FrameBuffer& aConfigFB)
 
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, aConfigFB.depthHandle, 0);
 
-	// Esto da error algo le falta o sobra
 	glDrawBuffers(drawBuffers.size(), drawBuffers.data());
 
-	// ORDENAR LOS LOGS A CADA CASE Q TOCA
 	GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (framebufferStatus == GL_FRAMEBUFFER_COMPLETE)
 	{
 		switch (framebufferStatus)
 		{
 		case GL_FRAMEBUFFER_UNDEFINED:
+			ELOG("GL_FRAMEBUFFER_UNDEFINED");
+			break;
 		case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+			ELOG("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT");
+			break;
 		case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+			ELOG("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");
+			break;
 		case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+			ELOG("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER");
+			break;
 		case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+			ELOG("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER");
+			break;
 		case GL_FRAMEBUFFER_UNSUPPORTED:
+			ELOG("GL_FRAMEBUFFER_UNSUPPORTED");
+			break;
 		case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+			ELOG("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE");
+			break;
 		case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+			ELOG("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS");
+			break;
 		default:
-			ELOG("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"); break;
 			ELOG("Unknown framebuffer status error");
-			ELOG("GL_FRAMEBUFFER_UNDEFINED"); break;
-			ELOG("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"); break;
-			ELOG("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"); break; ELOG("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"); break;
-			ELOG("GL_FRAMEBUFFER_UNSUPPORTED"); break;
-			ELOG("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"); break; ELOG("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS"); break;
+			break;
 		}
 	}
 
@@ -555,10 +558,10 @@ void App::ConfigureFrameBuffer(FrameBuffer& aConfigFB)
 
 void App::RenderGeometry(const Program& aBindedProgram)
 {
-	glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), localUniformBuffer.handle, globalParamsOffset, globalParamsOffset);
+	glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), localUniformBuffer.handle, globalParamsOffset, globalParamsSize);
 	for (auto it = entities.begin(); it != entities.end(); ++it)
 	{
-		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), localUniformBuffer.handle, it->localParamsOffset, it->localParamsOffset);
+		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), localUniformBuffer.handle, it->localParamsOffset, it->localParamsSize);
 
 		Model& model = models[it->modelIndex];
 		Mesh& mesh = meshes[model.meshIdx];

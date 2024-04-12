@@ -1,4 +1,4 @@
-#ifdef RENDER_TO_FB
+#ifdef FB_TO_QUAD
 
 #if defined(VERTEX) ///////////////////////////////////////////////////
 

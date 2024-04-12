@@ -45,11 +45,10 @@ struct App
 	std::vector<Program>	programs;
 
 	// program indices
-	u32 renderToBackBufferShader;
-	u32 renderToFrameBufferShader;
-	u32 frameBufferToQuadShader;
+	GLuint renderToBackBufferShader;
+	GLuint renderToFrameBufferShader;
+	GLuint frameBufferToQuadShader;
 
-	u32 patrisioCFuerteModel = 0;
 	GLuint texturedMeshProgram_uTexture;
 
 	// texture indices
