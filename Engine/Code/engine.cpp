@@ -386,9 +386,9 @@ void Render(App* app)
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, app->deferredFrameBuffer.fbHandle);
 
@@ -396,7 +396,7 @@ void Render(App* app)
 
 		app->RenderGeometry(programToUse);
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		break;
 	case Mode_Deferred:
@@ -412,8 +412,8 @@ void Render(App* app)
 
 		glDrawBuffers(app->deferredFrameBuffer.colorAttachment.size(), app->deferredFrameBuffer.colorAttachment.data());
 
-		/*glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glUseProgram(programToUse.handle);
 
