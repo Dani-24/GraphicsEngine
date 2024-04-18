@@ -122,13 +122,10 @@ Image LoadImage(const char* filename)
 	stbi_set_flip_vertically_on_load(true);
 	img.pixels = stbi_load(filename, &img.size.x, &img.size.y, &img.nchannels, 0);
 	if (img.pixels)
-	{
 		img.stride = img.size.x * img.nchannels;
-	}
 	else
-	{
 		ELOG("Could not open file %s", filename);
-	}
+
 	return img;
 }
 
@@ -274,29 +271,29 @@ void Init(App* app)
 
 	// === Init Buffers ===
 
-	// VBO
-	glGenBuffers(1, &app->embeddedVertices);
-	glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//// VBO
+	//glGenBuffers(1, &app->embeddedVertices);
+	//glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// EBO
-	glGenBuffers(1, &app->embeddedElements);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	//// EBO
+	//glGenBuffers(1, &app->embeddedElements);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	// VAO
-	glGenVertexArrays(1, &app->vao);
-	glBindVertexArray(app->vao);
-	glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)0);	// Primera layout de shaders.glsl
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)sizeof(glm::vec3));	// Segunda layout de shaders.glsl
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-	glBindVertexArray(0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	//// VAO
+	//glGenVertexArrays(1, &app->vao);
+	//glBindVertexArray(app->vao);
+	//glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)0);	// Primera layout de shaders.glsl
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)sizeof(glm::vec3));	// Segunda layout de shaders.glsl
+	//glEnableVertexAttribArray(1);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+	//glBindVertexArray(0);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	// Programs
 	app->renderToBackBufferShader = LoadProgram(app, "RENDER_TO_BB.glsl", "RENDER_TO_BB");
@@ -321,6 +318,8 @@ void Init(App* app)
 	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAligment);
 
 	app->localUniformBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
+
+	glEnable(GL_BLEND); // ????????????
 
 	app->entities.push_back({ TransformPositionScale(vec3(1.0,1.0,1.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
 	app->entities.push_back({ TransformPositionScale(vec3(2.0,1.0,1.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
@@ -396,7 +395,7 @@ void Render(App* app)
 
 		app->RenderGeometry(programToUse);
 
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		break;
 	case Mode_Deferred:
