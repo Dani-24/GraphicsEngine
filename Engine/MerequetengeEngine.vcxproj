@@ -39,6 +39,7 @@
     <ClInclude Include="Code\Globals.h" />
     <ClInclude Include="Code\ModelLoadingFunc.h" />
     <ClInclude Include="Code\platform.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="ThirdParty\glad\include\glad\glad.h" />
     <ClInclude Include="ThirdParty\glad\include\glad\khrplatform.h" />
     <ClInclude Include="ThirdParty\imgui-docking\imconfig.h" />
@@ -56,6 +57,12 @@
     <None Include="WorkingDir\RENDER_TO_BB.glsl" />
     <None Include="WorkingDir\RENDER_TO_FB.glsl" />
     <None Include="WorkingDir\shaders.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Merequetenge.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon1.ico" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

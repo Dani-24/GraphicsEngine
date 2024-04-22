@@ -107,6 +107,7 @@
     <ClInclude Include="Code\ModelLoadingFunc.h">
       <Filter>Engine</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="WorkingDir\shaders.glsl">
@@ -121,5 +122,11 @@
     <None Include="WorkingDir\FB_TO_QUAD.glsl">
       <Filter>Shaders</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Merequetenge.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon1.ico" />
   </ItemGroup>
 </Project>

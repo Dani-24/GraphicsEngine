@@ -139,10 +139,8 @@ struct Model
 
 enum Mode
 {
-    None,
     Mode_Forward,
     Mode_Deferred,
-    Mode_Count
 };
 
 struct VertexV3V2

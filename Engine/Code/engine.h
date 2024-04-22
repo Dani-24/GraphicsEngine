@@ -24,9 +24,13 @@ struct App
 
 	void RenderGeometry(const Program& aBindedProgram);
 
+	GLuint CreateColorAttachment(const bool isFloatingPoint);
+
 	// Loop
 	f32  deltaTime;
 	bool isRunning;
+
+	float iTime;
 
 	// Input
 	Input input;
