@@ -94,12 +94,19 @@ struct App
 
 	// Input
 	vec3 target = vec3(0.0f);
-	vec3 camPos = vec3(0.0f, 5.0f, 7.0f);
+	vec3 camPos = vec3(0.0f, 4.0f, 7.0f);
 	float camSpeed = 10.f;
 
 	int lastX = 0, lastY = 0;
 	float rotateX = 0.0f;
 	float rotateY = 0.0f;
+
+	u32 logoTexture;
+
+	bool getRotated = false;
+	bool resetCam = false;
+
+	int renderTarget = 0;
 };
 
 

@@ -308,17 +308,20 @@ void Init(App* app)
 	app->renderToFrameBufferShader = LoadProgram(app, "RENDER_TO_FB.glsl", "RENDER_TO_FB");
 	app->frameBufferToQuadShader = LoadProgram(app, "FB_TO_QUAD.glsl", "FB_TO_QUAD");
 
-	// Resources
+	// Models
 	const Program& texturedMeshProgram = app->programs[app->renderToBackBufferShader];
 	//app->texturedMeshProgram_uTexture = glGetUniformLocation(texturedMeshProgram.handle, "uTexture");
 	u32 patrisioModelIndex = ModelLoader::LoadModel(app, "Assets/Patrick.obj");
 	u32 groundModelIndex = ModelLoader::LoadModel(app, "Assets/ground.obj");
 
+	// Textures
 	/*app->diceTexIdx = LoadTexture2D(app, "Assets/dice.png");
 	app->whiteTexIdx = LoadTexture2D(app, "Assets/color_white.png");
 	app->blackTexIdx = LoadTexture2D(app, "Assets/color_black.png");
 	app->normalTexIdx = LoadTexture2D(app, "Assets/color_normal.png");
 	app->magentaTexIdx = LoadTexture2D(app, "Assets/color_magenta.png");*/
+
+	//app->logoTexture = LoadTexture2D(app, "Assets/merequetengue.png");
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -335,13 +338,14 @@ void Init(App* app)
 
 	app->entities.push_back({ TransformPositionScale(vec3(0.0,-3.0,0.0), vec3(1.0,1.0,1.0)), groundModelIndex, 0, 0 });
 
-	app->lights.push_back({ LightType::LightType_Directional, vec3(1.0,1.0,1.0), vec3(1.0,-1.0,1.0), vec3(0.0,0.0,0.0) });
-	app->lights.push_back({ LightType::LightType_Point, vec3(1.0,0.0,0.0), vec3(1.0,1.0,1.0), vec3(0.0,1.0,1.0) });
+	// LIGHTS	( Type // Color // Direction // Position )
+	app->lights.push_back({ LightType::LightType_Directional,	vec3(1.0,1.0,1.0), vec3(1.0,-1.0,1.0),	vec3(0.0,0.0,0.0) });
+	app->lights.push_back({ LightType::LightType_Directional,	vec3(0.0,5.0,5.0), vec3(0.0,0.0,0.0),	vec3(0.0,3.0,0.0) });
+	app->lights.push_back({ LightType::LightType_Point,			vec3(1.0,0.0,0.0), vec3(1.0,1.0,1.0),	vec3(0.0,1.0,1.0) });
 
 	app->ConfigureFrameBuffer(app->deferredFrameBuffer);
 
 	app->mode = Mode_Forward;
-	//app->mode = Mode_Deferred;
 
 	// Song
 	PlaySound(TEXT("Assets/Junes Theme - Persona 4.wav"), NULL, SND_LOOP | SND_ASYNC);
@@ -351,6 +355,11 @@ void Gui(App* app)
 {
 	ImGui::Begin("Info");
 	ImGui::Text("FPS: %f", 1.0f / app->deltaTime);
+
+	//ImGui::Image((ImTextureID)app->logoTexture, ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
+
+	ImGui::Text(""); ImGui::Separator(); ImGui::Text(""); //
+
 	ImGui::Text("%s", app->openGlDebugInfo.c_str());
 
 	ImGui::Text(""); ImGui::Separator(); ImGui::Text(""); //
@@ -371,6 +380,12 @@ void Gui(App* app)
 
 	ImGui::SliderFloat("Camera Speed", &app->camSpeed, 1.f, 20.f);
 
+	ImGui::Text(""); //
+
+	ImGui::Checkbox("Get Rotated", &app->getRotated);
+
+	ImGui::Checkbox("Reset Camera (Magical solution to all camera problems)", &app->resetCam);
+
 	ImGui::Text(""); ImGui::Separator(); ImGui::Text(""); //
 
 	// Render Modes
@@ -386,11 +401,25 @@ void Gui(App* app)
 		ImGui::EndCombo();
 	}
 
-	if (app->mode == Mode::Mode_Deferred) {
-		for (size_t i = 0; i < app->deferredFrameBuffer.colorAttachment.size(); ++i)
+	const char* RenderTargets[] = { "Albedo", "Normals", "Position", "Depth" };
+	if (app->mode == Mode::Mode_Deferred) 
+	{
+		if (ImGui::BeginCombo("Render_Target", RenderTargets[app->renderTarget]))
+		{
+			for (size_t i = 0; i < ARRAY_COUNT(RenderTargets); ++i) {
+				bool isSelected = (i == app->renderTarget);
+				if (ImGui::Selectable(RenderTargets[i], isSelected))
+					app->renderTarget = i;
+			}
+
+			ImGui::EndCombo();
+		}
+		ImGui::Image((ImTextureID)app->deferredFrameBuffer.colorAttachment[app->renderTarget], ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
+
+		/*for (size_t i = 0; i < app->deferredFrameBuffer.colorAttachment.size(); ++i)
 		{
 			ImGui::Image((ImTextureID)app->deferredFrameBuffer.colorAttachment[i], ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
-		}
+		}*/
 	}
 
 	ImGui::End();
@@ -409,6 +438,17 @@ void App::MouseMove(int x, int y) {
 
 void Update(App* app)
 {
+	if (app->resetCam) {
+		app->camPos = vec3(0.0f, 4.0f, 7.0f);
+		app->target = vec3(0.f);
+
+		app->lastX = app->lastY = app->rotateX = app->rotateY = 0.0f;
+
+		app->resetCam = false;
+	}
+
+	app->iTime += app->deltaTime;
+
 	// Input
 	float moveValue = app->camSpeed * app->deltaTime;
 
@@ -451,8 +491,6 @@ void Update(App* app)
 		app->lastX = app->input.mousePos.x;
 		app->lastY = app->input.mousePos.y;
 	}
-
-	app->iTime += app->deltaTime;
 }
 
 void Render(App* app)
@@ -554,7 +592,9 @@ void App::UpdateEntityBuffer()
 	mat4 projection = glm::perspective(glm::radians(60.0f), aspectRatio, zNear, zFar);
 
 	//vec3 target = vec3(0.f, 0.f, 0.f);
-	//vec3 camPos = 7.0f * vec3(glm::cos(iTime), 0.25f, glm::sin(iTime));	//vec3(5.0, 5.0, 5.0);
+
+	if (getRotated)
+		camPos = 7.0f * vec3(glm::cos(iTime), 0.25f, glm::sin(iTime));
 
 	vec3 zCam = glm::normalize(camPos - target);
 	vec3 xCam = glm::cross(zCam, vec3(0, 1, 0));
