@@ -353,6 +353,27 @@ void Gui(App* app)
 	ImGui::Text("FPS: %f", 1.0f / app->deltaTime);
 	ImGui::Text("%s", app->openGlDebugInfo.c_str());
 
+	ImGui::Text(""); ImGui::Separator(); ImGui::Text(""); //
+
+	// Camera
+	ImGui::Text("CAMERA");
+
+	float winSize = ImGui::GetWindowSize().x / 3;
+
+	ImGui::SetNextItemWidth(winSize);
+	ImGui::InputFloat("", &app->camPos.x); ImGui::SameLine();
+	ImGui::SetNextItemWidth(winSize);
+	ImGui::InputFloat("", &app->camPos.y); ImGui::SameLine();
+	ImGui::SetNextItemWidth(winSize);
+	ImGui::InputFloat("XYZ", &app->camPos.z);
+
+	ImGui::Text(""); //
+
+	ImGui::SliderFloat("Camera Speed", &app->camSpeed, 1.f, 20.f);
+
+	ImGui::Text(""); ImGui::Separator(); ImGui::Text(""); //
+
+	// Render Modes
 	const char* RenderModes[] = { "FORWARD", "DEFERRED" };
 	if (ImGui::BeginCombo("Render_Mode", RenderModes[app->mode]))
 	{
@@ -375,9 +396,61 @@ void Gui(App* app)
 	ImGui::End();
 }
 
+void App::MouseMove(int x, int y) {
+	int deltaX = x - lastX;
+	int deltaY = y - lastY;
+
+	lastX = x;
+	lastY = y;
+
+	rotateX += deltaY * 0.2f;
+	rotateY += deltaX * 0.2f;
+}
+
 void Update(App* app)
 {
-	// You can handle app->input keyboard/mouse here
+	// Input
+	float moveValue = app->camSpeed * app->deltaTime;
+
+	if (app->input.keys[K_A] == BUTTON_PRESSED)
+	{
+		app->camPos.x -= moveValue;
+		app->target.x -= moveValue;
+	}
+	if (app->input.keys[K_Q] == BUTTON_PRESSED)
+	{
+		app->camPos.y -= moveValue;
+		app->target.y -= moveValue;
+	}
+	if (app->input.keys[K_D] == BUTTON_PRESSED)
+	{
+		app->camPos.x += moveValue;
+		app->target.x += moveValue;
+	}
+	if (app->input.keys[K_E] == BUTTON_PRESSED)
+	{
+		app->camPos.y += moveValue;
+		app->target.y += moveValue;
+	}
+	if (app->input.keys[K_W] == BUTTON_PRESSED)
+	{
+		app->camPos.z -= moveValue;
+		app->target.z -= moveValue;
+	}
+	if (app->input.keys[K_S] == BUTTON_PRESSED)
+	{
+		app->camPos.z += moveValue;
+		app->target.z += moveValue;
+	}
+
+	if (app->input.mouseButtons[LEFT] == BUTTON_PRESSED)
+		app->MouseMove(app->input.mousePos.x, app->input.mousePos.y);
+
+	if (app->input.mouseButtons[LEFT] == BUTTON_PRESS)
+	{
+		app->lastX = app->input.mousePos.x;
+		app->lastY = app->input.mousePos.y;
+	}
 
 	app->iTime += app->deltaTime;
 }
@@ -480,15 +553,17 @@ void App::UpdateEntityBuffer()
 	float zFar = 1000.0f;
 	mat4 projection = glm::perspective(glm::radians(60.0f), aspectRatio, zNear, zFar);
 
-	vec3 target = vec3(0.f, 0.f, 0.f);
-
-	vec3 camPos = 7.0f * vec3(glm::cos(iTime), 0.25f, glm::sin(iTime));	//vec3(5.0, 5.0, 5.0);
+	//vec3 target = vec3(0.f, 0.f, 0.f);
+	//vec3 camPos = 7.0f * vec3(glm::cos(iTime), 0.25f, glm::sin(iTime));	//vec3(5.0, 5.0, 5.0);
 
 	vec3 zCam = glm::normalize(camPos - target);
 	vec3 xCam = glm::cross(zCam, vec3(0, 1, 0));
 	vec3 yCam = glm::cross(xCam, zCam);
 
 	mat4 view = glm::lookAt(camPos, target, yCam);
+
+	view = glm::rotate(view, glm::radians(rotateX), glm::vec3(1.0f, 0.0f, 0.0f));
+	view = glm::rotate(view, glm::radians(rotateY), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	BufferManager::MapBuffer(localUniformBuffer, GL_WRITE_ONLY);
 

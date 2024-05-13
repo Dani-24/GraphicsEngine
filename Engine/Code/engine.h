@@ -89,7 +89,19 @@ struct App
 	GLint globalParamsSize;
 
 	FrameBuffer deferredFrameBuffer;
+
+	void MouseMove(int x, int y);
+
+	// Input
+	vec3 target = vec3(0.0f);
+	vec3 camPos = vec3(0.0f, 5.0f, 7.0f);
+	float camSpeed = 10.f;
+
+	int lastX = 0, lastY = 0;
+	float rotateX = 0.0f;
+	float rotateY = 0.0f;
 };
+
 
 void Init(App* app);
 
