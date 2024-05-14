@@ -269,6 +269,16 @@ mat4 TransformPositionScale(const vec3& position, const vec3& scaleFactors)
 	return returnValue;
 }
 
+glm::quat TransformRotate(vec3 dir) 
+{
+	vec3 axis = glm::cross(vec3(0), dir);
+	float angle = glm::acos(glm::dot(vec3(0), dir));
+
+	glm::quat rotation = glm::angleAxis(angle, glm::normalize(axis));
+
+	return glm::rotate(rotation, angle, vec3(0));
+}
+
 void Init(App* app)
 {
 	// acabar lo del power
@@ -309,17 +319,19 @@ void Init(App* app)
 	app->frameBufferToQuadShader = LoadProgram(app, "FB_TO_QUAD.glsl", "FB_TO_QUAD");
 
 	// Models
-	const Program& texturedMeshProgram = app->programs[app->renderToBackBufferShader];
+	//const Program& texturedMeshProgram = app->programs[app->renderToBackBufferShader];
 	//app->texturedMeshProgram_uTexture = glGetUniformLocation(texturedMeshProgram.handle, "uTexture");
 	u32 patrisioModelIndex = ModelLoader::LoadModel(app, "Assets/Patrick.obj");
 	u32 groundModelIndex = ModelLoader::LoadModel(app, "Assets/ground.obj");
+	u32 sphereModelIndex = ModelLoader::LoadModel(app, "Assets/sphere.obj");
+	u32 coneModelIndex = ModelLoader::LoadModel(app, "Assets/cone.obj");
 
 	// Textures
-	/*app->diceTexIdx = LoadTexture2D(app, "Assets/dice.png");
-	app->whiteTexIdx = LoadTexture2D(app, "Assets/color_white.png");
-	app->blackTexIdx = LoadTexture2D(app, "Assets/color_black.png");
-	app->normalTexIdx = LoadTexture2D(app, "Assets/color_normal.png");
-	app->magentaTexIdx = LoadTexture2D(app, "Assets/color_magenta.png");*/
+	//app->diceTexIdx = LoadTexture2D(app, "Assets/dice.png");
+	//app->whiteTexIdx = LoadTexture2D(app, "Assets/color_white.png");
+	//app->blackTexIdx = LoadTexture2D(app, "Assets/color_black.png");
+	//app->normalTexIdx = LoadTexture2D(app, "Assets/color_normal.png");
+	//app->magentaTexIdx = LoadTexture2D(app, "Assets/color_magenta.png");
 
 	//app->logoTexture = LoadTexture2D(app, "Assets/merequetengue.png");
 
@@ -332,16 +344,33 @@ void Init(App* app)
 
 	app->localUniformBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
 
-	app->entities.push_back({ TransformPositionScale(vec3(0.0,1.0,0.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
+	app->entities.push_back({ TransformPositionScale(vec3(-2.0,1.0,-5.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
 	app->entities.push_back({ TransformPositionScale(vec3(2.0,1.0,5.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
 	app->entities.push_back({ TransformPositionScale(vec3(5.0,1.0,2.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
 
-	app->entities.push_back({ TransformPositionScale(vec3(0.0,-3.0,0.0), vec3(1.0,1.0,1.0)), groundModelIndex, 0, 0 });
+	app->entities.push_back({ TransformPositionScale(vec3(0.0,-2.5,0.0), vec3(1.0,1.0,1.0)), groundModelIndex, 0, 0 });
 
 	// LIGHTS	( Type // Color // Direction // Position )
 	app->lights.push_back({ LightType::LightType_Directional,	vec3(1.0,1.0,1.0), vec3(1.0,-1.0,1.0),	vec3(0.0,0.0,0.0) });
 	app->lights.push_back({ LightType::LightType_Directional,	vec3(0.0,5.0,5.0), vec3(0.0,0.0,0.0),	vec3(0.0,3.0,0.0) });
 	app->lights.push_back({ LightType::LightType_Point,			vec3(1.0,0.0,0.0), vec3(1.0,1.0,1.0),	vec3(0.0,1.0,1.0) });
+	app->lights.push_back({ LightType::LightType_Point,			vec3(0.0,1.0,0.0), vec3(1.0,1.0,1.0),	vec3(0.0,3.0,5.0) });
+	app->lights.push_back({ LightType::LightType_Point,			vec3(0.0,0.0,1.0), vec3(1.0,1.0,1.0),	vec3(5.0,2.0,-3.0) });
+
+	for (int i = 0; i < app->lights.size(); ++i)
+	{
+		switch (app->lights[i].type)
+		{
+		case LightType_Directional:
+			app->entities.push_back({ TransformPositionScale(app->lights[i].position, vec3(0.5)), coneModelIndex, 0, 0 });
+
+			// Rotar en función de la app->lights[i].direction
+			break;
+		case LightType_Point:
+			app->entities.push_back({ TransformPositionScale(app->lights[i].position, vec3(0.5)), sphereModelIndex, 0, 0 });
+			break;
+		}
+	}
 
 	app->ConfigureFrameBuffer(app->deferredFrameBuffer);
 
@@ -356,7 +385,7 @@ void Gui(App* app)
 	ImGui::Begin("Info");
 	ImGui::Text("FPS: %f", 1.0f / app->deltaTime);
 
-	//ImGui::Image((ImTextureID)app->logoTexture, ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
+	//ImGui::Image((ImTextureID)app->diceTexIdx, ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
 
 	ImGui::Text(""); ImGui::Separator(); ImGui::Text(""); //
 
@@ -401,8 +430,8 @@ void Gui(App* app)
 		ImGui::EndCombo();
 	}
 
-	const char* RenderTargets[] = { "Albedo", "Normals", "Position", "Depth" };
-	if (app->mode == Mode::Mode_Deferred) 
+	const char* RenderTargets[] = { "Albedo", "Normals", "Position", "View Direction", "Depth" };
+	if (app->mode == Mode::Mode_Deferred)
 	{
 		if (ImGui::BeginCombo("Render_Target", RenderTargets[app->renderTarget]))
 		{
@@ -414,7 +443,11 @@ void Gui(App* app)
 
 			ImGui::EndCombo();
 		}
-		ImGui::Image((ImTextureID)app->deferredFrameBuffer.colorAttachment[app->renderTarget], ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
+
+		if (app->renderTarget == 4)
+			ImGui::Image((ImTextureID)app->deferredFrameBuffer.depthHandle, ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
+		else
+			ImGui::Image((ImTextureID)app->deferredFrameBuffer.colorAttachment[app->renderTarget], ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
 
 		/*for (size_t i = 0; i < app->deferredFrameBuffer.colorAttachment.size(); ++i)
 		{
