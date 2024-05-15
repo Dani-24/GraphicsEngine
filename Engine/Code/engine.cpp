@@ -5,13 +5,13 @@
 
 #include "ModelLoadingFunc.h"
 
-// Windows Audio
+// ---- Windows Audio
 #include <Windows.h>
 #include <mmsystem.h>
 #include <iostream>
 
 #pragma comment(lib, "winmm.lib")
-//
+// ----
 
 GLuint CreateProgramFromSource(String programSource, const char* shaderName)
 {
@@ -256,6 +256,12 @@ GLuint FindVAO(Mesh& mesh, u32 subMeshIdx, const Program& program)
 	return returnValue;
 }
 
+quat RotateTowards(const vec3& from, const vec3& to) {
+	vec3 axis = glm::cross(from, to);
+	float angle = glm::acos(glm::dot(glm::normalize(from), glm::normalize(to)));
+	return glm::angleAxis(angle, glm::normalize(axis));
+}
+
 mat4 TransformScale(const vec3& scaleFactors)
 {
 	return glm::scale(scaleFactors);
@@ -266,52 +272,83 @@ mat4 TransformPositionScale(const vec3& position, const vec3& scaleFactors)
 	mat4 returnValue = glm::translate(position);
 	returnValue = glm::scale(returnValue, scaleFactors);
 
+	vec3 a = vec3(returnValue[3]);
+
+	//ILOG("%.f %.f %.f", a.x, a.y, a.z);
+
 	return returnValue;
 }
 
-glm::quat TransformRotate(vec3 dir) 
+mat4 Transform(const vec3& position, const vec3& rotation, const vec3& scaleFactors)
 {
-	vec3 axis = glm::cross(vec3(0), dir);
-	float angle = glm::acos(glm::dot(vec3(0), dir));
+	mat4 returnValue = glm::translate(position);
+	returnValue = glm::rotate(returnValue, glm::radians(rotation.x), vec3(1.0, 0.0, 0.0));
+	returnValue = glm::rotate(returnValue, glm::radians(rotation.y), vec3(0.0, 1.0, 0.0));
+	returnValue = glm::rotate(returnValue, glm::radians(rotation.z), vec3(0.0, 0.0, 1.0));
+	returnValue = glm::scale(returnValue, scaleFactors);
 
-	glm::quat rotation = glm::angleAxis(angle, glm::normalize(axis));
+	return returnValue;
+}
 
-	return glm::rotate(rotation, angle, vec3(0));
+mat4 TransformPositionDirectionScale(const vec3& position, const vec3& direction, const vec3& scaleFactors)
+{
+	mat4 returnValue = glm::translate(position);
+	returnValue *= glm::toMat4(RotateTowards(vec3(1.0, 0.0, 0.0), direction));
+	returnValue = glm::scale(returnValue, scaleFactors);
+
+	return returnValue;
 }
 
 void Init(App* app)
 {
-	// acabar lo del power
-	app->openGlDebugInfo += "OpenGL version:\n" + std::string(reinterpret_cast<const char*>(glGetString(GL_VERSION)));
-	app->openGlDebugInfo += "\n\nOpenGL vendor:\n" + std::string(reinterpret_cast<const char*>(glGetString(GL_VENDOR)));
-	app->openGlDebugInfo += "\n\nOpenGL renderer:\n" + std::string(reinterpret_cast<const char*>(glGetString(GL_RENDERER)));
-	app->openGlDebugInfo += "\n\nOpenGL GLSL version:\n" + std::string(reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION)));
+	// Debug Info
+	{
+		app->openGlDebugInfo += "OpenGL version:\n" + std::string(reinterpret_cast<const char*>(glGetString(GL_VERSION)));
+		app->openGlDebugInfo += "\n\nOpenGL vendor:\n" + std::string(reinterpret_cast<const char*>(glGetString(GL_VENDOR)));
+		app->openGlDebugInfo += "\n\nOpenGL renderer:\n" + std::string(reinterpret_cast<const char*>(glGetString(GL_RENDERER)));
+		app->openGlDebugInfo += "\n\nOpenGL GLSL version:\n" + std::string(reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION)));
+	}
 
 	// === Init Buffers ===
+	{
+		// VBO
+		glGenBuffers(1, &app->embeddedVertices);
+		glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// VBO
-	glGenBuffers(1, &app->embeddedVertices);
-	glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+		// EBO
+		glGenBuffers(1, &app->embeddedElements);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	// EBO
-	glGenBuffers(1, &app->embeddedElements);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		// VAO
+		glGenVertexArrays(1, &app->vao);
+		glBindVertexArray(app->vao);
+		glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)0);	// Primera layout de shaders.glsl
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)sizeof(glm::vec3));	// Segunda layout de shaders.glsl
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+		glBindVertexArray(0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	// VAO
-	glGenVertexArrays(1, &app->vao);
-	glBindVertexArray(app->vao);
-	glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)0);	// Primera layout de shaders.glsl
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexV3V2), (void*)sizeof(glm::vec3));	// Segunda layout de shaders.glsl
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-	glBindVertexArray(0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		//
+
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_BLEND);
+
+		glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
+		glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAligment);
+
+		app->localUniformBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
+	}
+
+	// Audio
+	PlaySound(TEXT("Assets/Junes Theme - Persona 4.wav"), NULL, SND_LOOP | SND_ASYNC);
 
 	// Programs
 	app->renderToBackBufferShader = LoadProgram(app, "RENDER_TO_BB.glsl", "RENDER_TO_BB");
@@ -319,8 +356,6 @@ void Init(App* app)
 	app->frameBufferToQuadShader = LoadProgram(app, "FB_TO_QUAD.glsl", "FB_TO_QUAD");
 
 	// Models
-	//const Program& texturedMeshProgram = app->programs[app->renderToBackBufferShader];
-	//app->texturedMeshProgram_uTexture = glGetUniformLocation(texturedMeshProgram.handle, "uTexture");
 	u32 patrisioModelIndex = ModelLoader::LoadModel(app, "Assets/Patrick.obj");
 	u32 groundModelIndex = ModelLoader::LoadModel(app, "Assets/ground.obj");
 	u32 sphereModelIndex = ModelLoader::LoadModel(app, "Assets/sphere.obj");
@@ -332,28 +367,18 @@ void Init(App* app)
 	//app->blackTexIdx = LoadTexture2D(app, "Assets/color_black.png");
 	//app->normalTexIdx = LoadTexture2D(app, "Assets/color_normal.png");
 	//app->magentaTexIdx = LoadTexture2D(app, "Assets/color_magenta.png");
-
 	//app->logoTexture = LoadTexture2D(app, "Assets/merequetengue.png");
 
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_BLEND);
-
-	glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
-	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAligment);
-
-	app->localUniformBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
-
-	app->entities.push_back({ TransformPositionScale(vec3(-2.0,1.0,-5.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
-	app->entities.push_back({ TransformPositionScale(vec3(2.0,1.0,5.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
-	app->entities.push_back({ TransformPositionScale(vec3(5.0,1.0,2.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
+	app->entities.push_back({ Transform(vec3(-2.0,1.0,-5.0),	vec3(0.0,45.0,0.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
+	app->entities.push_back({ Transform(vec3(2.0,1.0,5.0),		vec3(0.0,90.0,0.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
+	app->entities.push_back({ Transform(vec3(5.0,1.0,2.0),		vec3(0.0,0.0,0.0),	vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
 
 	app->entities.push_back({ TransformPositionScale(vec3(0.0,-2.5,0.0), vec3(1.0,1.0,1.0)), groundModelIndex, 0, 0 });
 
 	// LIGHTS	( Type // Color // Direction // Position )
-	app->lights.push_back({ LightType::LightType_Directional,	vec3(1.0,1.0,1.0), vec3(1.0,-1.0,1.0),	vec3(0.0,0.0,0.0) });
-	app->lights.push_back({ LightType::LightType_Directional,	vec3(0.0,5.0,5.0), vec3(0.0,0.0,0.0),	vec3(0.0,3.0,0.0) });
-	app->lights.push_back({ LightType::LightType_Point,			vec3(1.0,0.0,0.0), vec3(1.0,1.0,1.0),	vec3(0.0,1.0,1.0) });
+	app->lights.push_back({ LightType::LightType_Directional,	vec3(1.0,0.0,0.0), vec3(1.0,-1.0,1.0),	vec3(0.0,5.0,0.0) });
+	app->lights.push_back({ LightType::LightType_Directional,	vec3(0.0,0.0,1.0), vec3(0.5,1.0,0.5),	vec3(0.0,2.0,0.0) });
+	app->lights.push_back({ LightType::LightType_Point,			vec3(1.0,0.0,0.0), vec3(1.0,1.0,1.0),	vec3(0.0,1.0,10.0) });
 	app->lights.push_back({ LightType::LightType_Point,			vec3(0.0,1.0,0.0), vec3(1.0,1.0,1.0),	vec3(0.0,3.0,5.0) });
 	app->lights.push_back({ LightType::LightType_Point,			vec3(0.0,0.0,1.0), vec3(1.0,1.0,1.0),	vec3(5.0,2.0,-3.0) });
 
@@ -362,9 +387,7 @@ void Init(App* app)
 		switch (app->lights[i].type)
 		{
 		case LightType_Directional:
-			app->entities.push_back({ TransformPositionScale(app->lights[i].position, vec3(0.5)), coneModelIndex, 0, 0 });
-
-			// Rotar en función de la app->lights[i].direction
+			app->entities.push_back({ TransformPositionDirectionScale(app->lights[i].position, app->lights[i].direction, vec3(0.5)), coneModelIndex, 0, 0 });
 			break;
 		case LightType_Point:
 			app->entities.push_back({ TransformPositionScale(app->lights[i].position, vec3(0.5)), sphereModelIndex, 0, 0 });
@@ -375,17 +398,12 @@ void Init(App* app)
 	app->ConfigureFrameBuffer(app->deferredFrameBuffer);
 
 	app->mode = Mode_Forward;
-
-	// Song
-	PlaySound(TEXT("Assets/Junes Theme - Persona 4.wav"), NULL, SND_LOOP | SND_ASYNC);
 }
 
 void Gui(App* app)
 {
 	ImGui::Begin("Info");
 	ImGui::Text("FPS: %f", 1.0f / app->deltaTime);
-
-	//ImGui::Image((ImTextureID)app->diceTexIdx, ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
 
 	ImGui::Text(""); ImGui::Separator(); ImGui::Text(""); //
 
