@@ -147,8 +147,8 @@ enum Mode
 
 struct VertexV3V2
 {
-    glm::vec3 pos;
-    glm::vec2 uv;
+    vec3 pos;
+    vec2 uv;
 };
 
 struct String
@@ -184,6 +184,7 @@ struct Entity
     u32 modelIndex;
     u32 localParamsOffset;
     u32 localParamsSize;
+    bool allowRotation;
 };
 
 enum LightType

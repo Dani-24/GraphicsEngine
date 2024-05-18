@@ -196,6 +196,36 @@ u32 LoadTexture2D(App* app, const char* filepath)
 	}
 }
 
+vec3 HSLToRGB(float h, float s, float l)
+{
+	float r, g, b;
+
+	if (s == 0.0f)
+	{
+		r = g = b = l; // achromatic
+	}
+	else
+	{
+		auto HueToRGB = [](float p, float q, float t) {
+			if (t < 0.0f) t += 1.0f;
+			if (t > 1.0f) t -= 1.0f;
+			if (t < 1.0f / 6.0f) return p + (q - p) * 6.0f * t;
+			if (t < 1.0f / 3.0f) return q;
+			if (t < 1.0f / 2.0f) return p + (q - p) * (2.0f / 3.0f - t) * 6.0f;
+			return p;
+		};
+
+		float q = l < 0.5f ? l * (1.0f + s) : l + s - l * s;
+		float p = 2.0f * l - q;
+
+		r = HueToRGB(p, q, h + 1.0f / 3.0f);
+		g = HueToRGB(p, q, h);
+		b = HueToRGB(p, q, h - 1.0f / 3.0f);
+	}
+
+	return vec3(r, g, b);
+}
+
 GLuint FindVAO(Mesh& mesh, u32 subMeshIdx, const Program& program)
 {
 	GLuint returnValue = 0;
@@ -347,7 +377,7 @@ void Init(App* app)
 		app->localUniformBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
 	}
 
-	// Audio
+	// Windows Audio
 	PlaySound(TEXT("Assets/Junes Theme - Persona 4.wav"), NULL, SND_LOOP | SND_ASYNC);
 
 	// Programs
@@ -361,27 +391,21 @@ void Init(App* app)
 	u32 sphereModelIndex = ModelLoader::LoadModel(app, "Assets/sphere.obj");
 	u32 coneModelIndex = ModelLoader::LoadModel(app, "Assets/cone.obj");
 
-	// Textures
-	//app->diceTexIdx = LoadTexture2D(app, "Assets/dice.png");
-	//app->whiteTexIdx = LoadTexture2D(app, "Assets/color_white.png");
-	//app->blackTexIdx = LoadTexture2D(app, "Assets/color_black.png");
-	//app->normalTexIdx = LoadTexture2D(app, "Assets/color_normal.png");
-	//app->magentaTexIdx = LoadTexture2D(app, "Assets/color_magenta.png");
-	//app->logoTexture = LoadTexture2D(app, "Assets/merequetengue.png");
+	// Entities	( Transform Matrix // Model // 0 // 0 // Allow Rotation )
+	app->entities.push_back({ Transform(vec3(-2.0,1.0,-5.0),	vec3(0.0,45.0,0.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0, true });
+	app->entities.push_back({ Transform(vec3(2.0,1.0,5.0),		vec3(0.0,90.0,0.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0, true });
+	app->entities.push_back({ Transform(vec3(5.0,1.0,2.0),		vec3(0.0,0.0,0.0),	vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0, true });
 
-	app->entities.push_back({ Transform(vec3(-2.0,1.0,-5.0),	vec3(0.0,45.0,0.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
-	app->entities.push_back({ Transform(vec3(2.0,1.0,5.0),		vec3(0.0,90.0,0.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
-	app->entities.push_back({ Transform(vec3(5.0,1.0,2.0),		vec3(0.0,0.0,0.0),	vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0 });
-
-	app->entities.push_back({ TransformPositionScale(vec3(0.0,-2.5,0.0), vec3(1.0,1.0,1.0)), groundModelIndex, 0, 0 });
+	app->entities.push_back({ TransformPositionScale(vec3(0.0,-2.5,0.0), vec3(1.0,1.0,1.0)), groundModelIndex, 0, 0, false });
 
 	// LIGHTS	( Type // Color // Direction // Position )
-	app->lights.push_back({ LightType::LightType_Directional,	vec3(1.0,0.0,0.0), vec3(1.0,-1.0,1.0),	vec3(0.0,5.0,0.0) });
-	app->lights.push_back({ LightType::LightType_Directional,	vec3(0.0,0.0,1.0), vec3(0.5,1.0,0.5),	vec3(0.0,2.0,0.0) });
+	app->lights.push_back({ LightType::LightType_Directional,	vec3(0.0,0.0,1.0), vec3(1.0,-1.0,1.0),	vec3(0.0,5.0,0.0) });
+	app->lights.push_back({ LightType::LightType_Directional,	vec3(1.0,1.0,1.0), vec3(0.5,1.0,0.5),	vec3(0.0,2.0,0.0) });
 	app->lights.push_back({ LightType::LightType_Point,			vec3(1.0,0.0,0.0), vec3(1.0,1.0,1.0),	vec3(0.0,1.0,10.0) });
 	app->lights.push_back({ LightType::LightType_Point,			vec3(0.0,1.0,0.0), vec3(1.0,1.0,1.0),	vec3(0.0,3.0,5.0) });
 	app->lights.push_back({ LightType::LightType_Point,			vec3(0.0,0.0,1.0), vec3(1.0,1.0,1.0),	vec3(5.0,2.0,-3.0) });
 
+	// Ligths Meshes
 	for (int i = 0; i < app->lights.size(); ++i)
 	{
 		switch (app->lights[i].type)
@@ -396,18 +420,67 @@ void Init(App* app)
 	}
 
 	app->ConfigureFrameBuffer(app->deferredFrameBuffer);
-
 	app->mode = Mode_Forward;
+
+	app->lastFrameDisplaySize = app->displaySize;
 }
 
 void Gui(App* app)
 {
-	ImGui::Begin("Info");
+	if (app->rainbowMode) {
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImVec4* colors = style.Colors;
+
+		float hue = fmod(app->time * 0.25f, 1.0f);
+		float saturation = 0.8f;
+		float lightness = 0.25f;
+
+		vec3 rainbow = HSLToRGB(hue, saturation, lightness);
+
+		// Imgui Colors
+		colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+		colors[ImGuiCol_WindowBg] = ImVec4(rainbow.x, rainbow.y, rainbow.z, 1.00f);
+		colors[ImGuiCol_Button] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+		colors[ImGuiCol_ButtonHovered] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
+		colors[ImGuiCol_ButtonActive] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
+	}
+
+	ImGui::Begin("Merequetengue Control Panel");
 	ImGui::Text("FPS: %f", 1.0f / app->deltaTime);
+	
+	ImGui::Text("");
+
+	ImGui::Checkbox("ImGui RAINBOW", &app->rainbowMode);
+
+	ImGui::Text("");
+
+	ImGui::BulletText("Spheres are point lights, cones are directional lights");
 
 	ImGui::Text(""); ImGui::Separator(); ImGui::Text(""); //
 
-	ImGui::Text("%s", app->openGlDebugInfo.c_str());
+	if (ImGui::CollapsingHeader("Open GL Debug Info"))
+	{
+		ImGui::Text("%s", app->openGlDebugInfo.c_str());
+		ImGui::Text("");
+	}
+
+	if (ImGui::CollapsingHeader("Controls"))
+	{
+		ImGui::Text("Camera Movement");
+		ImGui::BulletText("A/S -> X axis");
+		ImGui::BulletText("W/S -> Z axis");
+		ImGui::BulletText("Q/E -> Y axis");
+		ImGui::Text("");
+		ImGui::Text("Camera Rotation");
+		ImGui::BulletText("Hold LMB (Left Mouse Button)");
+		ImGui::Text("");
+	}
+
+	if (ImGui::CollapsingHeader("Scene Control"))
+	{
+		ImGui::SliderFloat("Patricks rotation Speed", &app->patrickRotationSpeed, -1000.f, 1000.f);
+		ImGui::Checkbox("Rotate Patricks", &app->rotatePatricks);
+	}
 
 	ImGui::Text(""); ImGui::Separator(); ImGui::Text(""); //
 
@@ -425,13 +498,15 @@ void Gui(App* app)
 
 	ImGui::Text(""); //
 
-	ImGui::SliderFloat("Camera Speed", &app->camSpeed, 1.f, 20.f);
+	ImGui::SliderFloat("Camera Speed", &app->camSpeed, 1.f, 30.f);
 
 	ImGui::Text(""); //
 
-	ImGui::Checkbox("Get Rotated", &app->getRotated);
+	ImGui::Checkbox("Reset Camera", &app->resetCam);
 
-	ImGui::Checkbox("Reset Camera (Magical solution to all camera problems)", &app->resetCam);
+	ImGui::Text(""); //
+
+	ImGui::Checkbox("Rotate Camera", &app->rotateCam);
 
 	ImGui::Text(""); ImGui::Separator(); ImGui::Text(""); //
 
@@ -466,17 +541,13 @@ void Gui(App* app)
 			ImGui::Image((ImTextureID)app->deferredFrameBuffer.depthHandle, ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
 		else
 			ImGui::Image((ImTextureID)app->deferredFrameBuffer.colorAttachment[app->renderTarget], ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
-
-		/*for (size_t i = 0; i < app->deferredFrameBuffer.colorAttachment.size(); ++i)
-		{
-			ImGui::Image((ImTextureID)app->deferredFrameBuffer.colorAttachment[i], ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
-		}*/
 	}
 
 	ImGui::End();
 }
 
-void App::MouseMove(int x, int y) {
+void App::MouseMovement(int x, int y) 
+{
 	int deltaX = x - lastX;
 	int deltaY = y - lastY;
 
@@ -489,8 +560,19 @@ void App::MouseMove(int x, int y) {
 
 void Update(App* app)
 {
+	// Time since start
+	app->time += app->deltaTime;
+
+	// Fix DisplaySize Issues
+	if (app->displaySize.x != app->lastFrameDisplaySize.x || app->displaySize.y != app->lastFrameDisplaySize.y) {
+		app->deferredFrameBuffer.colorAttachment.clear();
+		app->ConfigureFrameBuffer(app->deferredFrameBuffer);
+	}
+	app->lastFrameDisplaySize = app->displaySize;
+
+	// Reset Cam Position
 	if (app->resetCam) {
-		app->camPos = vec3(0.0f, 4.0f, 7.0f);
+		app->camPos = app->originalCamPos;
 		app->target = vec3(0.f);
 
 		app->lastX = app->lastY = app->rotateX = app->rotateY = 0.0f;
@@ -498,7 +580,13 @@ void Update(App* app)
 		app->resetCam = false;
 	}
 
-	app->iTime += app->deltaTime;
+	// Rotate Entities that allow rotation
+	if (app->rotatePatricks) {
+		for (int i = 0; i < app->entities.size(); ++i) {
+			if (app->entities[i].allowRotation)
+				app->entities[i].worldMatrix = glm::rotate(app->entities[i].worldMatrix, glm::radians(app->deltaTime * app->patrickRotationSpeed), vec3(0.0, 1.0, 0.0));
+		}
+	}
 
 	// Input
 	float moveValue = app->camSpeed * app->deltaTime;
@@ -535,7 +623,7 @@ void Update(App* app)
 	}
 
 	if (app->input.mouseButtons[LEFT] == BUTTON_PRESSED)
-		app->MouseMove(app->input.mousePos.x, app->input.mousePos.y);
+		app->MouseMovement(app->input.mousePos.x, app->input.mousePos.y);
 
 	if (app->input.mouseButtons[LEFT] == BUTTON_PRESS)
 	{
@@ -559,18 +647,11 @@ void Render(App* app)
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 
-		//glBindFramebuffer(GL_FRAMEBUFFER, app->deferredFrameBuffer.fbHandle);
-
-		//const Program& forwardProgram = app->programs[app->renderToBackBufferShader];
 		glUseProgram(forwardProgram.handle);
 
 		app->RenderGeometry(forwardProgram);
-
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		break;
 	case Mode_Deferred:
@@ -589,7 +670,6 @@ void Render(App* app)
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		//const Program& deferredProgram = app->programs[app->renderToFrameBufferShader];
 		glUseProgram(deferredProgram.handle);
 
 		app->RenderGeometry(deferredProgram);
@@ -601,7 +681,6 @@ void Render(App* app)
 
 		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 
-		//const Program& deferredProgram = app->programs[app->renderToFrameBufferShader];
 		glUseProgram(frameBufferProgram.handle);
 
 		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->localUniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
@@ -642,10 +721,8 @@ void App::UpdateEntityBuffer()
 	float zFar = 1000.0f;
 	mat4 projection = glm::perspective(glm::radians(60.0f), aspectRatio, zNear, zFar);
 
-	//vec3 target = vec3(0.f, 0.f, 0.f);
-
-	if (getRotated)
-		camPos = 7.0f * vec3(glm::cos(iTime), 0.25f, glm::sin(iTime));
+	if (rotateCam)
+		camPos = originalCamPos.z * vec3(glm::cos(time), 0.25f, glm::sin(time));
 
 	vec3 zCam = glm::normalize(camPos - target);
 	vec3 xCam = glm::cross(zCam, vec3(0, 1, 0));
@@ -780,7 +857,6 @@ void App::RenderGeometry(const Program& aBindedProgram)
 
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, textures[subMeshMaterial.albedoTextureIdx].handle);
-			//glUniform1i(texturedMeshProgram_uTexture, 0); // Se usa una variable q no tiene nada ni sirve para nada???????????????
 
 			SubMesh& subMesh = mesh.submeshes[i];
 			glDrawElements(GL_TRIANGLES, subMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)subMesh.indexOffset);

@@ -30,7 +30,7 @@ struct App
 	f32  deltaTime;
 	bool isRunning;
 
-	float iTime;
+	float time;
 
 	// Input
 	Input input;
@@ -90,11 +90,12 @@ struct App
 
 	FrameBuffer deferredFrameBuffer;
 
-	void MouseMove(int x, int y);
+	void MouseMovement(int x, int y);
 
 	// Input
 	vec3 target = vec3(0.0f);
-	vec3 camPos = vec3(0.0f, 4.0f, 7.0f);
+	vec3 originalCamPos = vec3(-3.0f, 7.0f, 15.0f);
+	vec3 camPos = originalCamPos;
 	float camSpeed = 10.f;
 
 	int lastX = 0, lastY = 0;
@@ -103,10 +104,17 @@ struct App
 
 	u32 logoTexture;
 
-	bool getRotated = false;
 	bool resetCam = false;
+	bool rotateCam = false;
 
 	int renderTarget = 0;
+
+	float patrickRotationSpeed = 100;
+	bool rotatePatricks = true;
+
+	bool rainbowMode = true;
+
+	vec2 lastFrameDisplaySize = vec2(0.f);
 };
 
 

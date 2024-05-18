@@ -89,7 +89,7 @@ void CalcLights(in Light light,out vec3 ambient, out vec3 diffuse, out vec3 spec
 void main()
 {
 	vec4 textureColor = texture(uTexture, vTexCoord);
-	vec4 finalColor;
+	vec4 finalColor = vec4(0.0f);
 
 	for(int i = 0; i < uLightCount; ++i)
 	{
@@ -107,9 +107,9 @@ void main()
 
 			finalColor += vec4(lightResult, 1.0) * textureColor;
 		}
-		else						// Point (Cambiar esto a un switch en caso de añadir area)
+		else						// Point
 		{
-			// Variables custom
+			// Custom variables
 			float constant = 1.0f;
 			float linear = 0.09;
 			float quadratic = 0.032f;

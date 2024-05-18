@@ -3,44 +3,14 @@
 #if defined(VERTEX) ///////////////////////////////////////////////////
 
 layout(location = 0) in vec3 aPosition;
-//layout(location = 1) in vec3 aNormal;
 layout(location = 1) in vec2 aTexCoord;
-//layout(location = 3) in vec3 aTangent;
-//layout(location = 4) in vec3 aBiTangent;
-
-// struct Light
-// {
-// 	uint type;
-// 	vec3 color;
-// 	vec3 direction;
-// 	vec3 position;
-// };
-
-// layout(binding = 0, std140) uniform GlobalParams
-// {
-// 	vec3 	uCameraPosition;
-// 	uint 	uLightCount;
-// 	Light 	uLight[16];
-// };
-
-// layout(binding = 1, std140) uniform localParams
-// {
-// 	mat4 uWorldMatrix;
-// 	mat4 uWorldViewProjectionMatrix;
-// };
-
- out vec2 vTexCoord;
-// out vec3 vPosition;
-// out vec3 vNormal;
-// out vec3 vViewDir;
+ 
+out vec2 vTexCoord;
 
 void main()
 {
 	vTexCoord = aTexCoord;
-	// vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
-	// vNormal = vec3(uWorldMatrix * vec4(aNormal, 0.0));
-	// vViewDir = uCameraPosition - vPosition;
-	gl_Position = /*uWorldViewProjectionMatrix */ vec4(aPosition, 1.0);
+	gl_Position = vec4(aPosition, 1.0);
 }
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////////
@@ -61,9 +31,6 @@ layout(binding = 0, std140) uniform GlobalParams
 };
 
 in vec2 vTexCoord;
-// in vec3 vPosition;
-// in vec3 vNormal;
-// in vec3 vViewDir;
 
 uniform sampler2D uAlbedo;
 uniform sampler2D uNormals;
@@ -71,8 +38,6 @@ uniform sampler2D uPosition;
 uniform sampler2D uViewDir;
 
 layout(location = 0) out vec4 oColor;
-// layout(location = 1) out vec4 oNormals;
-// layout(location = 2) out vec4 oPosition;
 
 void CalcLights(in Light light,out vec3 ambient, out vec3 diffuse, out vec3 specular)
 {
@@ -115,9 +80,9 @@ void main()
 
 			finalColor += vec4(lightResult, 1.0) * textureColor;
 		}
-		else						// Point (Cambiar esto a un switch en caso de añadir area)
+		else						// Point
 		{
-			// Variables custom
+			// Custom Variables
 			float constant = 1.0f;
 			float linear = 0.09;
 			float quadratic = 0.032f;
