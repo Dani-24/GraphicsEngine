@@ -53,6 +53,9 @@ struct App
 	GLuint renderToFrameBufferShader;
 	GLuint frameBufferToQuadShader;
 
+	GLuint reliefMappingShader;
+	GLuint bloomShader;
+
 	GLuint texturedMeshProgram_uTexture;
 
 	// texture indices

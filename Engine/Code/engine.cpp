@@ -385,6 +385,9 @@ void Init(App* app)
 	app->renderToFrameBufferShader = LoadProgram(app, "RENDER_TO_FB.glsl", "RENDER_TO_FB");
 	app->frameBufferToQuadShader = LoadProgram(app, "FB_TO_QUAD.glsl", "FB_TO_QUAD");
 
+	app->reliefMappingShader = LoadProgram(app, "RELIEF_MAPPING.glsl", "RELIEF_MAPPING");
+	app->bloomShader = LoadProgram(app, "BLOOM.glsl", "BLOOM");
+
 	// Models
 	u32 patrisioModelIndex = ModelLoader::LoadModel(app, "Assets/Patrick.obj");
 	u32 groundModelIndex = ModelLoader::LoadModel(app, "Assets/ground.obj");
