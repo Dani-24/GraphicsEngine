@@ -69,6 +69,16 @@ layout(location = 0) out vec4 oAlbedo;
 layout(location = 1) out vec4 oNormals;
 layout(location = 2) out vec4 oPosition;
 layout(location = 3) out vec4 oViewDir;
+layout(location = 4) out vec4 oDepth;
+
+uniform float near;
+uniform float far;
+
+float LinearizeDepth(float depth)
+{
+    float z = depth * 2.0 - 1.0; 
+    return (2.0 * near * far) / (far + near - z * (far - near));
+}
 
 void main()
 {
@@ -76,6 +86,10 @@ void main()
 	oNormals = vec4(vNormal, 1.0);
 	oPosition = vec4(vPosition, 1.0);
 	oViewDir = vec4(vViewDir, 1.0);
+	
+ 	float depth = (LinearizeDepth(gl_FragCoord.z) - near) / (far - near);
+
+	oDepth = vec4(vec3(depth), 1.0);
 }
 
 #endif

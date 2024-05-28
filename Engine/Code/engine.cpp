@@ -431,7 +431,7 @@ void Gui(App* app)
 		ImGuiStyle& style = ImGui::GetStyle();
 		ImVec4* colors = style.Colors;
 
-		float hue = fmod(app->time * 0.25f, 1.0f);
+		float hue = fmod(app->time * 0.1f, 1.0f);
 		float saturation = 0.8f;
 		float lightness = 0.25f;
 
@@ -447,7 +447,7 @@ void Gui(App* app)
 
 	ImGui::Begin("Merequetengue Control Panel");
 	ImGui::Text("FPS: %f", 1.0f / app->deltaTime);
-	
+
 	ImGui::Text("");
 
 	ImGui::Checkbox("ImGui RAINBOW", &app->rainbowMode);
@@ -537,16 +537,13 @@ void Gui(App* app)
 			ImGui::EndCombo();
 		}
 
-		if (app->renderTarget == 4)
-			ImGui::Image((ImTextureID)app->deferredFrameBuffer.depthHandle, ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
-		else
-			ImGui::Image((ImTextureID)app->deferredFrameBuffer.colorAttachment[app->renderTarget], ImVec2(250, 150), ImVec2(0, 1), ImVec2(1, 0));
+		ImGui::Image((ImTextureID)app->deferredFrameBuffer.colorAttachment[app->renderTarget], ImVec2(300, 180), ImVec2(0, 1), ImVec2(1, 0));
 	}
 
 	ImGui::End();
 }
 
-void App::MouseMovement(int x, int y) 
+void App::MouseMovement(int x, int y)
 {
 	int deltaX = x - lastX;
 	int deltaY = y - lastY;
@@ -672,6 +669,9 @@ void Render(App* app)
 
 		glUseProgram(deferredProgram.handle);
 
+		glUniform1f(glGetUniformLocation(deferredProgram.handle, "near"), app->zNear);
+		glUniform1f(glGetUniformLocation(deferredProgram.handle, "far"), app->zFar / 10);
+
 		app->RenderGeometry(deferredProgram);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -717,8 +717,7 @@ void Render(App* app)
 void App::UpdateEntityBuffer()
 {
 	float aspectRatio = (float)displaySize.x / (float)displaySize.y;
-	float zNear = 0.1f;
-	float zFar = 1000.0f;
+
 	mat4 projection = glm::perspective(glm::radians(60.0f), aspectRatio, zNear, zFar);
 
 	if (rotateCam)
@@ -770,6 +769,7 @@ void App::UpdateEntityBuffer()
 void App::ConfigureFrameBuffer(FrameBuffer& aConfigFB)
 {
 	aConfigFB.colorAttachment.push_back(CreateColorAttachment(false));
+	aConfigFB.colorAttachment.push_back(CreateColorAttachment(true));
 	aConfigFB.colorAttachment.push_back(CreateColorAttachment(true));
 	aConfigFB.colorAttachment.push_back(CreateColorAttachment(true));
 	aConfigFB.colorAttachment.push_back(CreateColorAttachment(true));

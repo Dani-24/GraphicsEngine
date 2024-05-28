@@ -92,7 +92,7 @@ struct App
 
 	void MouseMovement(int x, int y);
 
-	// Input
+	// CAMERA
 	vec3 target = vec3(0.0f);
 	vec3 originalCamPos = vec3(-3.0f, 7.0f, 15.0f);
 	vec3 camPos = originalCamPos;
@@ -101,6 +101,9 @@ struct App
 	int lastX = 0, lastY = 0;
 	float rotateX = 0.0f;
 	float rotateY = 0.0f;
+
+	float zNear = 0.1f;
+	float zFar = 1000.0f;
 
 	u32 logoTexture;
 
