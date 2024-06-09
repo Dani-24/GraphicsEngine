@@ -21,7 +21,7 @@ uniform vec3 viewPos;
 void main() {
     TexCoord = aTexCoord;
 
-    vec4 FragPosWorld = model * vec4(aPos, 1.0);
+    vec4 FragPosWorld = model * vec4(aPosition, 1.0);
     FragPos = FragPosWorld.xyz;
 
     gl_Position = projection * view * FragPosWorld;
@@ -51,7 +51,6 @@ uniform sampler2D heightMap;
 
 uniform float heightScale;
 
-// Internet
 vec2 reliefMapping(vec2 texCoords, vec3 viewDir) {
     float numLayers = 32.0;
     float layerDepth = 1.0 / numLayers;
@@ -78,6 +77,7 @@ vec2 reliefMapping(vec2 texCoords, vec3 viewDir) {
     return finalTexCoords;
 }
 
+/*
 // Power
 vec2 reliefMapping(vec2 texCoords)
 {
@@ -104,6 +104,7 @@ vec2 reliefMapping(vec2 texCoords)
 
     return samplePositionTexspace.xy;
 }
+*/
 
 void main() {
     vec3 viewDir = normalize(TangentViewPos - FragPos);

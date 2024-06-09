@@ -393,6 +393,11 @@ void Init(App* app)
 	u32 groundModelIndex = ModelLoader::LoadModel(app, "Assets/ground.obj");
 	u32 sphereModelIndex = ModelLoader::LoadModel(app, "Assets/sphere.obj");
 	u32 coneModelIndex = ModelLoader::LoadModel(app, "Assets/cone.obj");
+	u32 cubeModelIndex = ModelLoader::LoadModel(app, "Assets/cube.fbx");
+
+	// Textures
+	app->diffuseText = LoadTexture2D(app, "Assets/Brick Block Material_albedo.png");
+	app->heightMapText = LoadTexture2D(app, "Assets/Brick Block Material_heightMap.png");
 
 	// Entities	( Transform Matrix // Model // 0 // 0 // Allow Rotation )
 	app->entities.push_back({ Transform(vec3(-2.0,1.0,-5.0),	vec3(0.0,45.0,0.0), vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0, true });
@@ -400,6 +405,8 @@ void Init(App* app)
 	app->entities.push_back({ Transform(vec3(5.0,1.0,2.0),		vec3(0.0,0.0,0.0),	vec3(1.0,1.0,1.0)), patrisioModelIndex, 0, 0, true });
 
 	app->entities.push_back({ TransformPositionScale(vec3(0.0,-2.5,0.0), vec3(1.0,1.0,1.0)), groundModelIndex, 0, 0, false });
+
+	app->entities.push_back({ TransformPositionScale(vec3(0.0,0.0,0.0), vec3(1.0,1.0,1.0)), cubeModelIndex, 0, 0, false });
 
 	// LIGHTS	( Type // Color // Direction // Position )
 	app->lights.push_back({ LightType::LightType_Directional,	vec3(0.0,0.0,1.0), vec3(1.0,-1.0,1.0),	vec3(0.0,5.0,0.0) });
@@ -637,6 +644,8 @@ void Render(App* app)
 	const Program& forwardProgram = app->programs[app->renderToBackBufferShader];
 	const Program& deferredProgram = app->programs[app->renderToFrameBufferShader];
 	const Program& frameBufferProgram = app->programs[app->frameBufferToQuadShader];
+	const Program& reliefMappingProgram = app->programs[app->reliefMappingShader];
+	const Program& bloomProgram = app->programs[app->bloomShader];
 
 	switch (app->mode)
 	{
@@ -652,6 +661,26 @@ void Render(App* app)
 		glUseProgram(forwardProgram.handle);
 
 		app->RenderGeometry(forwardProgram);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		glUseProgram(reliefMappingProgram.handle);
+
+		glUniform1f(glGetUniformLocation(reliefMappingProgram.handle, "heightScale"), 0.1f);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, app->diffuseText);
+		glUniform1i(glGetUniformLocation(reliefMappingProgram.handle, "diffuseMap"), 0);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, app->heightMapText);
+		glUniform1i(glGetUniformLocation(reliefMappingProgram.handle, "heightMap"), 1);
+
+		glBindVertexArray(app->vao);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+		glBindVertexArray(0);
+		glUseProgram(0);
 
 		break;
 	case Mode_Deferred:

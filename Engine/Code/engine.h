@@ -65,6 +65,9 @@ struct App
 	u32 normalTexIdx;
 	u32 magentaTexIdx;
 
+	u32 diffuseText;
+	u32 heightMapText;
+
 	// Mode
 	Mode mode;
 
